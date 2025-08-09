@@ -7,6 +7,7 @@ class Player {
   public velocity: Vector3 = { x: 0, y: 0, z: 0 };
   public color: string;
   public health: number = 100;
+  public coins: number = 0;
 
   constructor(
     id: string,
@@ -30,6 +31,9 @@ class Player {
   heal(amount: number) {
     if (this.health < 100) this.health += amount;
     if (this.health > 100) this.health = 100;
+  }
+  give(item: any, amount: number) {
+    if (item == "coins") this.coins += amount;
   }
 }
 

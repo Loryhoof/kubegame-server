@@ -20,7 +20,7 @@ const io = new Server(server, {
 
 setInterval(tick, 1000 / serverHz);
 
-const world = new World();
+const world = new World(io);
 
 // update loop
 function tick() {

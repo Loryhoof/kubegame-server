@@ -4,6 +4,15 @@ type Quaternion = { x: number; y: number; z: number; w: number };
 const zeroVector: Vector3 = { x: 0, y: 0, z: 0 };
 const zeroQuaternion: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 
+function generateUUID() {
+  // RFC4122 version 4 compliant UUID generator (simple)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function randomHex(): string {
   return (
     "#" +
@@ -55,6 +64,10 @@ function applyQuaternion(vec: Vector3, q: Quaternion): Vector3 {
   };
 }
 
+function randomIntBetween(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export {
   getYRotationQuaternion,
   applyQuaternion,
@@ -63,4 +76,6 @@ export {
   zeroVector,
   zeroQuaternion,
   randomHex,
+  generateUUID,
+  randomIntBetween,
 };
