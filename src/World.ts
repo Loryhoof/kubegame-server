@@ -2,16 +2,17 @@ import { Server } from "socket.io";
 import { speedFactor } from "./constants";
 import TriggerZone from "./Entities/TriggerZone";
 
-import Entity from "./interfaces/Entity";
 import Zone from "./interfaces/Zone";
 import { randomHex, randomIntBetween } from "./mathUtils";
 import Player from "./Player";
+import Collider from "./interfaces/Collider";
+import BoxCollider from "./Colliders/BoxCollider";
 
 class World {
   private io: Server;
   private players: Map<string, Player> = new Map();
-  private entities: Entity[] = [];
   private zones: Zone[] = [];
+  private colliders: Collider[] = [];
 
   constructor(io: Server) {
     this.io = io;
@@ -36,17 +37,53 @@ class World {
       "#ff0000",
       { type: "damage", amount: 0.1 }
     );
-    // const pickupZone = new TriggerZone(
-    //   2,
-    //   2,
-    //   2,
-    //   { x: 10, y: -0.5, z: 15 },
-    //   { x: 0, y: 0, z: 0, w: 1 },
-    //   "#FFA500",
-    //   { type: "pickup", itemId: "gold", amount: 105 },
-    //   () => this.removeZone(pickupZone)
-    // );
 
+    const wall = new BoxCollider(
+      1,
+      2,
+      100,
+      { x: 50, y: -0.5, z: -60 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      "#ffffff"
+    );
+
+    const wall2 = new BoxCollider(
+      100,
+      2,
+      1,
+      { x: -50, y: -0.5, z: 40 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      "#ffffff"
+    );
+
+    const wall3 = new BoxCollider(
+      1,
+      2,
+      100,
+      { x: -50, y: -0.5, z: -60 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      "#ffffff"
+    );
+
+    const wall4 = new BoxCollider(
+      100,
+      2,
+      1,
+      { x: -50, y: -0.5, z: -60 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      "#ffffff"
+    );
+
+    const collider2 = new BoxCollider(
+      5,
+      2,
+      5,
+      { x: -10, y: -0.5, z: 25 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      "#ffffff"
+    );
+
+    this.colliders.push(wall, wall2, wall3, wall4, collider2);
     this.zones.push(healthZone, damageZone);
 
     setInterval(() => {
@@ -63,7 +100,7 @@ class World {
 
       this.zones.push(tz);
       this.io.emit("zoneCreated", tz);
-    }, 5000);
+    }, 20000);
   }
   update() {
     for (const [key, player] of this.players) {
@@ -72,10 +109,28 @@ class World {
       if (player.health <= 0) {
         player.setPosition({ x: 0, y: 0, z: 0 });
         player.health = 100;
-        //this.removePlayer(player.id);
       }
-      player.position.x += player.velocity.x * speedFactor;
-      player.position.z += player.velocity.z * speedFactor;
+
+      // estimate pos
+
+      const playerHalfSize = { x: 0.5, y: 0.5, z: 0.5 };
+      let allowMove = true;
+
+      this.colliders.forEach((collider) => {
+        let fakePosition = {
+          x: player.position.x,
+          y: player.position.y,
+          z: player.position.z,
+        };
+        fakePosition.x += player.velocity.x * speedFactor;
+        fakePosition.z += player.velocity.z * speedFactor;
+        if (collider.contains(fakePosition, playerHalfSize)) allowMove = false;
+      });
+
+      if (allowMove) {
+        player.position.x += player.velocity.x * speedFactor;
+        player.position.z += player.velocity.z * speedFactor;
+      }
 
       this.zones.forEach((zone) => {
         if (zone.contains(player)) {
@@ -92,6 +147,7 @@ class World {
     return {
       players: this.players,
       zones: this.zones,
+      colliders: this.colliders,
     };
   }
   addPlayer(networkId: string) {

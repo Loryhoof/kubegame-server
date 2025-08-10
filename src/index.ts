@@ -37,9 +37,9 @@ io.on("connection", (socket) => {
 
   socket.broadcast.emit("addPlayer", socket.id);
 
-  const { zones } = world.getState();
+  const { zones, colliders } = world.getState();
 
-  socket.emit("initWorld", { zones: zones });
+  socket.emit("initWorld", { zones: zones, colliders: colliders });
 
   world.addPlayer(socket.id);
 
@@ -95,6 +95,12 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+server.listen(
+  {
+    port: PORT,
+    host: "0.0.0.0",
+  },
+  () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  }
+);

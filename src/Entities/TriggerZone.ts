@@ -1,4 +1,3 @@
-import Entity from "../interfaces/Entity";
 import Zone, { TriggerAction } from "../interfaces/Zone";
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import Player from "../Player";
@@ -13,7 +12,7 @@ export default class TriggerZone implements Zone {
   public color: string;
   public triggerAction: TriggerAction;
 
-  private onRemoveZone?: (zone: TriggerZone) => void;
+  private onRemove?: (zone: TriggerZone) => void;
 
   constructor(
     width: number,
@@ -23,7 +22,7 @@ export default class TriggerZone implements Zone {
     quaternion: Quaternion,
     color: string,
     triggerAction: TriggerAction,
-    onRemoveZone?: (zone: TriggerZone) => void
+    onRemove?: (zone: TriggerZone) => void
   ) {
     this.id = generateUUID();
     this.width = width;
@@ -33,7 +32,7 @@ export default class TriggerZone implements Zone {
     this.quaternion = quaternion;
     this.color = color;
     this.triggerAction = triggerAction;
-    this.onRemoveZone = onRemoveZone;
+    this.onRemove = onRemove;
   }
 
   contains(player: Player): boolean {
@@ -60,7 +59,7 @@ export default class TriggerZone implements Zone {
 
       case "pickup":
         player.give(this.triggerAction.itemId, this.triggerAction.amount);
-        if (this.onRemoveZone) this.onRemoveZone(this);
+        if (this.onRemove) this.onRemove(this);
         break;
 
       default:
