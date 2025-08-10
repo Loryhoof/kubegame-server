@@ -8,6 +8,7 @@ class Player {
   public color: string;
   public health: number = 100;
   public coins: number = 0;
+  public lastAttackTime: number = 0;
 
   constructor(
     id: string,

@@ -44,7 +44,14 @@ io.on("connection", (socket) => {
   world.addPlayer(socket.id);
 
   type PlayerInput = {
-    keys: { w: boolean; a: boolean; s: boolean; d: boolean; shift: boolean };
+    keys: {
+      w: boolean;
+      a: boolean;
+      s: boolean;
+      d: boolean;
+      shift: boolean;
+      e: boolean;
+    };
     quaternion: [number, number, number, number];
   };
 
@@ -61,6 +68,13 @@ io.on("connection", (socket) => {
     if (data.keys.s) inputDir.z += 1;
     if (data.keys.a) inputDir.x -= 1;
     if (data.keys.d) inputDir.x += 1;
+
+    if (data.keys.e) {
+      if (Date.now() - player.lastAttackTime >= 500) {
+        player.lastAttackTime = Date.now();
+        socket.emit("user_action", { type: "attack" });
+      }
+    }
 
     // Normalize input direction to avoid faster diagonal movement
     const length = Math.sqrt(inputDir.x * inputDir.x + inputDir.z * inputDir.z);
