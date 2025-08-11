@@ -8,6 +8,8 @@ import Player from "./Player";
 import Collider from "./interfaces/Collider";
 import BoxCollider from "./Colliders/BoxCollider";
 
+const zoneSpawnLimit: number = 10;
+
 class World {
   private io: Server;
   private players: Map<string, Player> = new Map();
@@ -87,6 +89,8 @@ class World {
     this.zones.push(healthZone, damageZone);
 
     setInterval(() => {
+      if (this.zones.length >= zoneSpawnLimit) return;
+
       let tz = new TriggerZone(
         2,
         2,
