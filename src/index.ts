@@ -64,6 +64,11 @@ async function init() {
       quaternion: [number, number, number, number];
     };
 
+    socket.on("pingCheck", (startTime) => {
+      // Immediately send back the same timestamp to client
+      socket.emit("pongCheck", startTime);
+    });
+
     socket.on("playerInput", (data: PlayerInput) => {
       const { players } = world.getState();
       const player = players.get(socket.id);
