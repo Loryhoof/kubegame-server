@@ -62,6 +62,8 @@ class World {
     );
 
     setInterval(() => {
+      if (this.interactables.length >= 10) return;
+
       let pickup = new Pickup(
         new Vector3(randomIntBetween(0, 40), 0, randomIntBetween(0, 40)),
         new Quaternion(0, 0, 0, 1),
