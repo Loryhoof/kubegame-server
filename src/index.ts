@@ -12,7 +12,7 @@ import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 443;
 
 const options = {
   key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
