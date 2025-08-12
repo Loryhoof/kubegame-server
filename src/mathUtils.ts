@@ -68,6 +68,29 @@ function randomIntBetween(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function getYawQuaternion(q: Quaternion): Quaternion {
+  // Convert quaternion to Euler angles (pitch, yaw, roll)
+  // We'll only keep the yaw (rotation around Y axis)
+
+  const ysqr = q.y * q.y;
+
+  // yaw (y-axis rotation)
+  const t3 = +2.0 * (q.w * q.y + q.z * q.x);
+  const t4 = +1.0 - 2.0 * (ysqr + q.z * q.z);
+  const yaw = Math.atan2(t3, t4);
+
+  // Construct a new quaternion representing yaw only
+  // Quaternion for yaw angle around Y axis is:
+  // q = [0, sin(yaw/2), 0, cos(yaw/2)]
+
+  return {
+    x: 0,
+    y: Math.sin(yaw / 2),
+    z: 0,
+    w: Math.cos(yaw / 2),
+  };
+}
+
 function eulerToQuaternion(pitch: number, yaw: number, roll: number) {
   const cy = Math.cos(yaw * 0.5);
   const sy = Math.sin(yaw * 0.5);
@@ -138,4 +161,5 @@ export {
   randomIntBetween,
   eulerToQuaternion,
   slerp,
+  getYawQuaternion,
 };
