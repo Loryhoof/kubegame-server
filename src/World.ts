@@ -9,6 +9,10 @@ import Collider from "./interfaces/Collider";
 import Box from "./Shapes/Box";
 import PhysicsManager from "./PhysicsManager";
 import Vector3 from "./Math/Vector3";
+import Interactable from "./interfaces/Interactable";
+import Item from "./Entities/Pickup";
+import { Quaternion } from "@dimforge/rapier3d-compat";
+import Pickup from "./Entities/Pickup";
 
 const zoneSpawnLimit: number = 10;
 
@@ -18,6 +22,7 @@ class World {
   private zones: Zone[] = [];
   private colliders: Collider[] = [];
   private entities: any[] = [];
+  private interactables: Interactable[] = [];
 
   constructor(io: Server) {
     this.io = io;
@@ -56,7 +61,23 @@ class World {
       "#ff00ff"
     );
 
+    setInterval(() => {
+      let pickup = new Pickup(
+        new Vector3(randomIntBetween(0, 40), 0, randomIntBetween(0, 40)),
+        new Quaternion(0, 0, 0, 1),
+        "coin",
+        randomIntBetween(5, 15),
+        () => {
+          this.removeInteractable(pickup);
+        }
+      );
+
+      this.interactables.push(pickup);
+      this.io.emit("interactableCreated", pickup);
+    }, 5000);
+
     this.entities.push(box, box2, box3);
+    //this.interactables.push(interactable, interactable2, interactable3);
 
     //physics.createBoxCollider({ x: 5, y: 5, z: 5 }, { x: 5, y: 0, z: 5 });
 
@@ -95,6 +116,10 @@ class World {
         player.teleportTo(new Vector3(0, 5, 0));
       }
 
+      if (player.wantsToInteract) {
+        this.scanInteractables(player);
+      }
+
       // estimate pos
 
       //const playerHalfSize = { x: 0.5, y: 0.5, z: 0.5 };
@@ -126,11 +151,67 @@ class World {
       //     zone.trigger(player);
       //   }
       // });
+
+      //       function checkPlayerInteractables(player: ClientPlayer) {
+      //   let closestInteractable = null;
+      //   let minDist = Infinity;
+
+      //   type InteractableType = { id: string; mesh: THREE.Mesh };
+
+      //   const interactables = world.interactables as InteractableType[];
+
+      //   for (const interactable of interactables) {
+      //     const dist = player.getPosition().distanceTo(interactable.mesh.position);
+      //     if (dist < minDist) {
+      //       minDist = dist;
+      //       closestInteractable = interactable;
+      //     }
+      //   }
+
+      //   // console.log(closestInteractable, minDist);
+
+      //   if (minDist <= 1.5) {
+      //     wantsToInteract = true;
+      //   } else {
+      //     wantsToInteract = false;
+      //   }
+      // }
     }
 
     // this.entities.forEach((entity) => {
     //   entity.update();
     // });
+  }
+  scanInteractables(player: Player) {
+    let closestInteractable = null;
+    let minDist = Infinity;
+
+    for (const interactable of this.interactables) {
+      const fromVec = new Vector3(
+        player.position.x,
+        player.position.y,
+        player.position.z
+      );
+      const toVec = new Vector3(
+        interactable.position.x,
+        interactable.position.y,
+        interactable.position.z
+      );
+
+      const dist = fromVec.distanceTo(toVec);
+      // const dist = player.position.distanceTo(interactable.position);
+      if (dist < minDist) {
+        minDist = dist;
+        closestInteractable = interactable;
+      }
+    }
+
+    //console.log(minDist, "Mindist");
+
+    if (minDist <= 1.5) {
+      console.log("USING", closestInteractable);
+      closestInteractable?.use(player);
+    }
   }
   getState() {
     return {
@@ -143,6 +224,12 @@ class World {
         height: entity.height,
         depth: entity.depth,
         color: entity.color,
+        position: entity.position,
+        quaternion: entity.quaternion,
+      })),
+
+      interactables: this.interactables.map((entity) => ({
+        id: entity.id,
         position: entity.position,
         quaternion: entity.quaternion,
       })),
@@ -165,6 +252,13 @@ class World {
     const uuid = zone.id;
     this.zones = this.zones.filter((zone) => zone.id !== uuid);
     this.io.emit("zoneRemoved", uuid);
+  }
+  removeInteractable(interactable: Interactable) {
+    const uuid = interactable.id;
+    this.interactables = this.interactables.filter(
+      (interactable) => interactable.id !== uuid
+    );
+    this.io.emit("interactableRemoved", uuid);
   }
 }
 

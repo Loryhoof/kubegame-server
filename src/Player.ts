@@ -22,6 +22,9 @@ class Player {
   private jumpCooldown: number = 200; // ms between jumps
   private coyoteTime: number = 100; // ms grace period after leaving ground
 
+  // interaction
+  public wantsToInteract: boolean = false;
+
   constructor(
     id: string,
     position: Vector3,
@@ -83,7 +86,7 @@ class Player {
   }
 
   give(item: any, amount: number) {
-    if (item === "coins") this.coins += amount;
+    if (item === "coin") this.coins += amount;
   }
 
   isGrounded(): boolean {

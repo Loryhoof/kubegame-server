@@ -36,8 +36,11 @@ async function init() {
     socket.broadcast.emit("addPlayer", socket.id);
 
     // const { zones, colliders } = world.getState();
-    const { entities } = world.getState();
-    socket.emit("initWorld", { entities: entities });
+    const { entities, interactables } = world.getState();
+    socket.emit("initWorld", {
+      entities: entities,
+      interactables: interactables,
+    });
 
     world.addPlayer(socket.id);
 
@@ -71,11 +74,14 @@ async function init() {
       // console.log(inputDir);
 
       // if (data.keys.e) {
-      //   if (Date.now() - player.lastAttackTime >= 500) {
-      //     player.lastAttackTime = Date.now();
-      //     socket.emit("user_action", { type: "attack" });
-      //   }
+      //   // if (Date.now() - player.lastAttackTime >= 500) {
+      //   //   player.lastAttackTime = Date.now();
+      //   //   socket.emit("user_action", { type: "attack" });
+      //   // }
+      //   player.wantsToInteract = true
       // }
+
+      player.wantsToInteract = data.keys.e;
 
       const length = Math.sqrt(
         inputDir.x * inputDir.x + inputDir.z * inputDir.z

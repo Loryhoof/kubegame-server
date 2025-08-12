@@ -41,6 +41,13 @@ export default class Vector3 {
     return this; // Return this for chaining
   }
 
+  distanceTo(vec: Vector3): number {
+    const dx = this.x - vec.x;
+    const dy = this.y - vec.y;
+    const dz = this.z - vec.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
   // Returns a new vector with the same values as this vector
   clone(): Vector3 {
     return new Vector3(this.x, this.y, this.z);
