@@ -1,6 +1,7 @@
 import express from "express";
 import { Server } from "socket.io";
-import http from "http";
+// import http from "http";
+import https from "https";
 import {
   applyQuaternion,
   getYawQuaternion,
@@ -20,7 +21,7 @@ const options = {
 } as any;
 
 // Create an HTTP server from the Express app
-const server = http.createServer(options, app);
+const server = https.createServer(options, app);
 
 // Attach Socket.IO to the HTTP server
 const io = new Server(server, {
