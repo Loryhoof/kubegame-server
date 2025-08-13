@@ -1,7 +1,7 @@
 import express from "express";
 import { Server } from "socket.io";
-// import http from "http";
-import https from "https";
+import http from "http";
+// import https from "https";
 import {
   applyQuaternion,
   getYawQuaternion,
@@ -11,17 +11,21 @@ import {
 import World from "./World";
 import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
-import { readFileSync } from "fs";
+// import { readFileSync } from "fs";
 const app = express();
-const PORT = process.env.PORT || 443;
+// const PORT = process.env.PORT || 443;
 
-const options = {
-  key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
-  cert: readFileSync("/etc/letsencrypt/live/kevinklatt.de/fullchain.pem"),
-} as any;
+const PORT = process.env.PORT || 3000;
+
+// const options = {
+//   key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
+//   cert: readFileSync("/etc/letsencrypt/live/kevinklatt.de/fullchain.pem"),
+// } as any;
 
 // Create an HTTP server from the Express app
-const server = https.createServer(options, app);
+// const server = https.createServer(options, app);
+
+const server = http.createServer(app);
 
 // Attach Socket.IO to the HTTP server
 const io = new Server(server, {
