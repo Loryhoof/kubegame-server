@@ -18,8 +18,8 @@ let ray = new RAPIER.Ray(
 let DOWN = new RAPIER.Vector3(0, -1, 0);
 
 export interface PhysicsObject {
-  rigidBody: any;
-  collider: any;
+  rigidBody: RAPIER.RigidBody;
+  collider: RAPIER.Collider;
 }
 
 export default class PhysicsManager {
@@ -176,6 +176,53 @@ export default class PhysicsManager {
     );
   }
 
+  getNearestColliderHitPosition(physicsObject: PhysicsObject) {
+    let shapeRot = { w: 1.0, x: 0.0, y: 0.0, z: 0.0 };
+    let shape = new RAPIER.Cuboid(1.0, 1.0, 1.0);
+    let targetDistance = 0.0;
+    let maxToi = 1.0;
+    // Optional parameters:
+    let stopAtPenetration = true;
+    let filterFlags = RAPIER.QueryFilterFlags.EXCLUDE_DYNAMIC;
+    let filterGroups = 0x000b0001;
+    let filterExcludeCollider = physicsObject.collider;
+    let filterExcludeRigidBody = physicsObject.rigidBody;
+
+    let pos = physicsObject.rigidBody.translation();
+    pos.y = pos.y + 1;
+
+    let hit = PhysicsManager.getInstance().physicsWorld.castShape(
+      pos,
+      shapeRot,
+      { x: 0, y: 0, z: 1 }, //physicsObject.rigidBody.linvel(),
+      shape,
+      targetDistance,
+      maxToi,
+      stopAtPenetration,
+      undefined, // "Filterflags"
+      filterGroups,
+      filterExcludeCollider,
+      filterExcludeRigidBody
+    );
+
+    if (hit != null) {
+      return true;
+    } else {
+      return false;
+    }
+
+    // if (hit != null) {
+    //   const collider = hit.collider;
+    //   const rb = collider.parent();
+    //   if (rb) {
+    //     const pos = rb.translation(); // world position of the object
+    //     return pos;
+    //   }
+    // }
+
+    return null;
+  }
+
   moveCharacter(
     controller: any,
     collider: any,
@@ -189,11 +236,11 @@ export default class PhysicsManager {
     this.setLinearVelocity(rigidBody, correctedMovement);
   }
 
-  raycast(origin: Vector3, dir: Vector3, rb: any) {
+  raycast(origin: Vector3, dir: Vector3, rb: any, toi: number = 4) {
     ray.origin = origin;
     ray.dir = dir;
 
-    let maxToi = 4.0;
+    let maxToi = toi;
     let solid = false;
 
     let hit = this.physicsWorld.castRay(
@@ -208,16 +255,16 @@ export default class PhysicsManager {
 
     if (hit !== null) {
       let hitPoint = ray.pointAt(hit.timeOfImpact);
-      return distanceBetween(origin, hitPoint);
+      return distanceBetween(origin, hitPoint as Vector3);
     }
     return null;
   }
 
-  raycastFull(origin: Vector3, dir: Vector3, rb: any = undefined) {
+  raycastFull(origin: Vector3, dir: Vector3, rb: any, toi: number = 4) {
     ray.origin = origin;
     ray.dir = dir;
 
-    let maxToi = 4.0;
+    let maxToi = toi;
     let solid = false;
 
     let hit = this.physicsWorld.castRay(
@@ -232,6 +279,17 @@ export default class PhysicsManager {
 
     return { ray, hit };
   }
+
+  // getPlayerFromCollider(collider: any) {
+  //   if (!collider) return;
+
+  //   // this.physicsWorld.colliders.forEach((col: any) => {
+  //   //   console.log(collider.handle, col.handle);
+  //   //   if (collider.handle == col.handle) {
+  //   //     console.log("Found it");
+  //   //   }
+  //   // });
+  // }
 
   setLinearVelocity(rigidBody: any, velocity: any | Vector3) {
     rigidBody.setLinvel(velocity, true);

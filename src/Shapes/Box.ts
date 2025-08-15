@@ -1,5 +1,4 @@
-import { Vector3 } from "@dimforge/rapier3d-compat";
-import { generateUUID, Quaternion } from "../mathUtils";
+import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 
 export default class Box {

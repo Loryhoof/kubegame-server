@@ -1,6 +1,6 @@
 import express from "express";
 import { Server } from "socket.io";
-// import http from "http";
+import http from "http";
 import https from "https";
 import {
   applyQuaternion,
@@ -12,16 +12,24 @@ import World from "./World";
 import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
+import { config } from "dotenv";
+
+config();
 const app = express();
-const PORT = process.env.PORT || 443;
 
-const options = {
-  key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
-  cert: readFileSync("/etc/letsencrypt/live/kevinklatt.de/fullchain.pem"),
-} as any;
+let server;
 
-// Create an HTTP server from the Express app
-const server = https.createServer(options, app);
+if (process.env.ENVIRONMENT == "PROD") {
+  const options = {
+    key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
+    cert: readFileSync("/etc/letsencrypt/live/kevinklatt.de/fullchain.pem"),
+  } as any;
+  server = https.createServer(options, app);
+} else {
+  server = http.createServer(app);
+}
+
+const PORT = process.env.PORT || 3000;
 
 // Attach Socket.IO to the HTTP server
 const io = new Server(server, {
@@ -60,6 +68,8 @@ async function init() {
         shift: boolean;
         e: boolean;
         " ": boolean;
+        mouseLeft: boolean;
+        mouseRight: boolean;
       };
       quaternion: [number, number, number, number];
     };
@@ -74,7 +84,7 @@ async function init() {
       const player = players.get(socket.id);
       if (!player) return;
 
-      let inputDir: Vector3 = { x: 0, y: 0, z: 0 };
+      let inputDir: Vector3 = new Vector3();
 
       if (data.keys.w) inputDir.z -= 1;
       if (data.keys.s) inputDir.z += 1;
@@ -82,6 +92,8 @@ async function init() {
       if (data.keys.d) inputDir.x += 1;
 
       if (data.keys[" "]) player.jump();
+
+      player.keys = data.keys;
 
       // console.log(inputDir);
 
@@ -115,12 +127,17 @@ async function init() {
 
         // --- YAW ONLY: make player face movement direction ---
         const yaw = Math.atan2(-worldDir.x, -worldDir.z);
-        player.quaternion = {
-          x: 0,
-          y: Math.sin(yaw / 2),
-          z: 0,
-          w: Math.cos(yaw / 2),
-        };
+
+        if (data.keys.mouseRight) {
+          player.quaternion = yawQuat;
+        } else {
+          player.quaternion = {
+            x: 0,
+            y: Math.sin(yaw / 2),
+            z: 0,
+            w: Math.cos(yaw / 2),
+          };
+        }
 
         // Apply velocity
         let sprintFactor = data.keys.shift ? 1.5 : 1;
@@ -130,6 +147,48 @@ async function init() {
       } else {
         player.velocity.x = 0;
         player.velocity.z = 0;
+      }
+
+      if (data.keys.mouseLeft) {
+        if (Date.now() - player.lastAttackTime >= 500) {
+          player.lastAttackTime = Date.now();
+
+          const cameraQuat = {
+            x: data.quaternion[0],
+            y: data.quaternion[1],
+            z: data.quaternion[2],
+            w: data.quaternion[3],
+          };
+
+          const forward = new Vector3(0, 0, -1);
+          forward.applyQuaternion(player.quaternion);
+
+          const pos = player.physicsObject.rigidBody.translation();
+          const hit = PhysicsManager.getInstance().raycastFull(
+            new Vector3(pos.x, pos.y, pos.z),
+            forward,
+            player.physicsObject.rigidBody,
+            1
+          );
+
+          if (hit && hit.hit && hit.hit.collider) {
+            const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
+
+            if (hitPlayer) hitPlayer.damage(25);
+
+            io.emit("user_action", {
+              id: socket.id,
+              type: "attack",
+              hasHit: true,
+            });
+          } else {
+            io.emit("user_action", {
+              id: socket.id,
+              type: "attack",
+              hasHit: null,
+            });
+          }
+        }
       }
     });
 
@@ -157,6 +216,7 @@ async function init() {
       position: Vector3;
       quaternion: Quaternion;
       color: string;
+      keys: any;
     };
 
     const transformedPlayers: Record<string, PlayerData> = {};
@@ -170,6 +230,7 @@ async function init() {
         position: player.position,
         quaternion: player.quaternion,
         color: player.color,
+        keys: player.keys,
       };
     }
 
