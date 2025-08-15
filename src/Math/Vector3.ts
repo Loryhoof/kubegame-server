@@ -9,23 +9,20 @@ export default class Vector3 {
     this.z = z;
   }
 
-  // Modifies this vector by adding another vector to it
   add(vec: Vector3): this {
     this.x += vec.x;
     this.y += vec.y;
     this.z += vec.z;
-    return this; // Return this for chaining
+    return this;
   }
 
-  // Modifies this vector by subtracting another vector from it
   sub(vec: Vector3): this {
     this.x -= vec.x;
     this.y -= vec.y;
     this.z -= vec.z;
-    return this; // Return this for chaining
+    return this;
   }
 
-  // Set the values of the vector
   set(x: number, y: number, z: number): this {
     this.x = x;
     this.y = y;
@@ -33,12 +30,11 @@ export default class Vector3 {
     return this;
   }
 
-  // Multiplies this vector's components by a scalar
   multiplyScalar(scalar: number): this {
     this.x *= scalar;
     this.y *= scalar;
     this.z *= scalar;
-    return this; // Return this for chaining
+    return this;
   }
 
   distanceTo(vec: Vector3): number {
@@ -48,13 +44,49 @@ export default class Vector3 {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
-  // Returns a new vector with the same values as this vector
   clone(): Vector3 {
     return new Vector3(this.x, this.y, this.z);
   }
 
-  // A static method to return a zero vector
   static zero(): Vector3 {
     return new Vector3(0, 0, 0);
+  }
+
+  // --- New Methods ---
+
+  normalize(): this {
+    const length = Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
+    if (length > 0) {
+      this.x /= length;
+      this.y /= length;
+      this.z /= length;
+    }
+    return this;
+  }
+
+  applyQuaternion(q: { x: number; y: number; z: number; w: number }): this {
+    const x = this.x,
+      y = this.y,
+      z = this.z;
+    const qx = q.x,
+      qy = q.y,
+      qz = q.z,
+      qw = q.w;
+
+    const ix = qw * x + qy * z - qz * y;
+    const iy = qw * y + qz * x - qx * z;
+    const iz = qw * z + qx * y - qy * x;
+    const iw = -qx * x - qy * y - qz * z;
+
+    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
+    this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
+    this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+
+    return this;
+  }
+
+  // Dot product with another vector
+  dot(vec: Vector3): number {
+    return this.x * vec.x + this.y * vec.y + this.z * vec.z;
   }
 }

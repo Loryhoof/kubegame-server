@@ -10,8 +10,7 @@ import Box from "./Shapes/Box";
 import PhysicsManager from "./PhysicsManager";
 import Vector3 from "./Math/Vector3";
 import Interactable from "./interfaces/Interactable";
-import Item from "./Entities/Pickup";
-import { Quaternion } from "@dimforge/rapier3d-compat";
+import RAPIER, { Quaternion } from "@dimforge/rapier3d-compat";
 import Pickup from "./Entities/Pickup";
 
 const zoneSpawnLimit: number = 10;
@@ -32,7 +31,7 @@ class World {
     const physics = PhysicsManager.getInstance();
 
     // ground
-    physics.createFixedBox({ x: 0, y: -0.5, z: 0 }, { x: 100, y: 0.1, z: 100 });
+    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(100, 0.1, 100));
 
     const box = new Box(
       5,
@@ -110,6 +109,8 @@ class World {
 
       if (player.health <= 0) {
         // player.setPosition(new Vector3(0, 0, 0));
+
+        player.teleportTo(new Vector3(0, 10, 0));
 
         player.health = 100;
       }
@@ -237,6 +238,19 @@ class World {
       })),
     };
   }
+
+  getPlayerFromCollider(col: RAPIER.Collider): Player | null {
+    for (const [key, player] of this.players) {
+      const { collider } = player.physicsObject;
+
+      if (collider.handle == col.handle) {
+        return player;
+      }
+    }
+
+    return null;
+  }
+
   addPlayer(networkId: string) {
     const newPlayer = new Player(
       networkId,

@@ -1,3 +1,4 @@
+import RAPIER, { QueryFilterFlags } from "@dimforge/rapier3d-compat";
 import Vector3 from "./Math/Vector3";
 import { Quaternion } from "./mathUtils";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
@@ -24,6 +25,9 @@ class Player {
 
   // interaction
   public wantsToInteract: boolean = false;
+
+  // anim/keys
+  public keys: Record<string, boolean> = {};
 
   constructor(
     id: string,
@@ -61,7 +65,7 @@ class Player {
     );
 
     // Sync position
-    this.setPosition(this.physicsObject.rigidBody.translation());
+    this.setPosition(this.physicsObject.rigidBody.translation() as Vector3);
 
     // Reset jump state when on ground
     if (this.grounded) {

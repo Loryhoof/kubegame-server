@@ -1,7 +1,7 @@
-type Vector3 = { x: number; y: number; z: number };
+import Vector3 from "./Math/Vector3";
+
 type Quaternion = { x: number; y: number; z: number; w: number };
 
-const zeroVector: Vector3 = { x: 0, y: 0, z: 0 };
 const zeroQuaternion: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 
 function generateUUID() {
@@ -56,16 +56,46 @@ function applyQuaternion(vec: Vector3, q: Quaternion): Vector3 {
   const iz = qw * z + qx * y - qy * x;
   const iw = -qx * x - qy * y - qz * z;
 
-  // calculate result * inverse quat
-  return {
-    x: ix * qw + iw * -qx + iy * -qz - iz * -qy,
-    y: iy * qw + iw * -qy + iz * -qx - ix * -qz,
-    z: iz * qw + iw * -qz + ix * -qy - iy * -qx,
-  };
+  return new Vector3(
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx
+  );
 }
 
 function randomIntBetween(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function isFacingHit(
+  playerPos: Vector3,
+  playerQuat: Quaternion,
+  hitPos: Vector3,
+  maxAngleDeg: number = 45
+) {
+  // Direction from player to hit
+  const dir = new Vector3(
+    hitPos.x - playerPos.x,
+    hitPos.y - playerPos.y,
+    hitPos.z - playerPos.z
+  ).normalize();
+
+  // Player forward vector
+
+  const quat = {
+    x: playerQuat.x,
+    y: playerQuat.y,
+    z: playerQuat.z,
+    w: playerQuat.w,
+  };
+
+  const forward = new Vector3(0, 0, -1).applyQuaternion(quat).normalize();
+
+  // Angle between vectors
+  const dot = forward.dot(dir);
+  const angleDeg = Math.acos(Math.min(Math.max(dot, -1), 1)) * (180 / Math.PI);
+
+  return angleDeg <= maxAngleDeg;
 }
 
 function getYawQuaternion(q: Quaternion): Quaternion {
@@ -154,7 +184,6 @@ export {
   applyQuaternion,
   Vector3,
   Quaternion,
-  zeroVector,
   zeroQuaternion,
   randomHex,
   generateUUID,
@@ -162,4 +191,5 @@ export {
   eulerToQuaternion,
   slerp,
   getYawQuaternion,
+  isFacingHit,
 };
