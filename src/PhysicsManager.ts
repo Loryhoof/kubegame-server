@@ -115,7 +115,7 @@ export default class PhysicsManager {
   createFixedBox(
     position: Vector3,
     scale: Vector3,
-    rotation: Quaternion = new RAPIER.Quaternion(0, 0, 0, 1)
+    rotation: Quaternion = new Quaternion(0, 0, 0, 1)
   ): PhysicsObject {
     const rbDesc = RAPIER.RigidBodyDesc.fixed()
       .setTranslation(position.x, position.y, position.z)
@@ -148,6 +148,18 @@ export default class PhysicsManager {
 
     let capsuleColDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
     let collider = this.physicsWorld.createCollider(capsuleColDesc, rigidBody);
+
+    return { rigidBody, collider };
+  }
+
+  createCar(position: Vector3): PhysicsObject {
+    let rbDesc = RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(position.x, position.y, position.z)
+      .setAdditionalMass(1500);
+    let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+
+    let boxColDesc = RAPIER.ColliderDesc.cuboid(1, 0.25, 2);
+    let collider = this.physicsWorld.createCollider(boxColDesc, rigidBody);
 
     return { rigidBody, collider };
   }

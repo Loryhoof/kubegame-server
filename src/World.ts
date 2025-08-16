@@ -3,15 +3,16 @@ import { speedFactor } from "./constants";
 import TriggerZone from "./Entities/TriggerZone";
 
 import Zone from "./interfaces/Zone";
-import { randomHex, randomIntBetween } from "./mathUtils";
+import { Quaternion, randomHex, randomIntBetween } from "./mathUtils";
 import Player from "./Player";
 import Collider from "./interfaces/Collider";
 import Box from "./Shapes/Box";
 import PhysicsManager from "./PhysicsManager";
 import Vector3 from "./Math/Vector3";
 import Interactable from "./interfaces/Interactable";
-import RAPIER, { Quaternion } from "@dimforge/rapier3d-compat";
+import RAPIER from "@dimforge/rapier3d-compat";
 import Pickup from "./Entities/Pickup";
+import Vehicle from "./Vehicle/Vehicle";
 
 const zoneSpawnLimit: number = 10;
 
@@ -22,6 +23,7 @@ class World {
   private colliders: Collider[] = [];
   private entities: any[] = [];
   private interactables: Interactable[] = [];
+  private vehicles: Vehicle[] = [];
 
   constructor(io: Server) {
     this.io = io;
@@ -31,14 +33,22 @@ class World {
     const physics = PhysicsManager.getInstance();
 
     // ground
-    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(100, 0.1, 100));
+    physics.createFixedBox(
+      new Vector3(0, -0.5, 0),
+      new Vector3(5000, 0.1, 5000)
+    );
+
+    // car test
+
+    const car = new Vehicle(new Vector3(25, 5, 0));
+    this.vehicles.push(car);
 
     const box = new Box(
       5,
       5,
       5,
       new Vector3(0, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
+      new Quaternion(),
       "#0000ff"
     );
 
@@ -47,7 +57,7 @@ class World {
       3,
       5,
       new Vector3(5, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
+      new Quaternion(),
       "#00ff00"
     );
 
@@ -56,7 +66,7 @@ class World {
       1.25,
       5,
       new Vector3(10, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
+      new Quaternion(),
       "#ff00ff"
     );
 
@@ -103,7 +113,7 @@ class World {
     //   this.io.emit("zoneCreated", tz);
     // }, 20000);
   }
-  update() {
+  update(delta: number) {
     for (const [key, player] of this.players) {
       player.update();
 
@@ -181,6 +191,10 @@ class World {
       // }
     }
 
+    this.vehicles.forEach((vehicle) => {
+      vehicle.update(delta);
+    });
+
     // this.entities.forEach((entity) => {
     //   entity.update();
     // });
@@ -236,6 +250,18 @@ class World {
         position: entity.position,
         quaternion: entity.quaternion,
       })),
+
+      // vehicles: this.vehicles.map((vehicle) => ({
+      //   id: vehicle.id,
+      //   position: vehicle.position,
+      //   quaternion: vehicle.quaternion,
+      //   wheels: vehicle.wheels.map((wheel) => ({
+      //     radius: wheel.radius,
+      //     position: wheel.position,
+      //     quaternion: wheel.quaternion,
+      //   })),
+      // })),
+      vehicles: this.vehicles,
     };
   }
 
@@ -255,7 +281,7 @@ class World {
     const newPlayer = new Player(
       networkId,
       new Vector3(0, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
+      new Quaternion(0, 0, 0, 1),
       randomHex()
     );
 

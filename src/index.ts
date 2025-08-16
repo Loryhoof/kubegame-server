@@ -17,6 +17,9 @@ import { config } from "dotenv";
 config();
 const app = express();
 
+let lastTime = Date.now();
+let startTime = Date.now();
+
 let server;
 
 if (process.env.ENVIRONMENT == "PROD") {
@@ -51,10 +54,20 @@ async function init() {
     socket.broadcast.emit("addPlayer", socket.id);
 
     // const { zones, colliders } = world.getState();
-    const { entities, interactables } = world.getState();
+    const { entities, interactables, vehicles } = world.getState();
     socket.emit("initWorld", {
       entities: entities,
       interactables: interactables,
+      vehicles: vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        position: vehicle.position,
+        quaternion: vehicle.quaternion,
+        wheels: vehicle.wheels.map((wheel) => ({
+          radius: wheel.radius,
+          position: wheel.position,
+          quaternion: wheel.quaternion,
+        })),
+      })),
     });
 
     world.addPlayer(socket.id);
@@ -107,6 +120,14 @@ async function init() {
 
       player.wantsToInteract = data.keys.e;
 
+      if (player.wantsToInteract) {
+        vehicles.forEach((vehicle) => {
+          if (vehicle.position.distanceTo(player.position) <= 2) {
+            player.enterVehicle(vehicle);
+          }
+        });
+      }
+
       const length = Math.sqrt(
         inputDir.x * inputDir.x + inputDir.z * inputDir.z
       );
@@ -114,12 +135,12 @@ async function init() {
         inputDir.x /= length;
         inputDir.z /= length;
 
-        const cameraQuat = {
-          x: data.quaternion[0],
-          y: data.quaternion[1],
-          z: data.quaternion[2],
-          w: data.quaternion[3],
-        };
+        const cameraQuat = new Quaternion(
+          data.quaternion[0],
+          data.quaternion[1],
+          data.quaternion[2],
+          data.quaternion[3]
+        );
 
         const yawQuat = getYawQuaternion(cameraQuat);
 
@@ -131,12 +152,12 @@ async function init() {
         if (data.keys.mouseRight) {
           player.quaternion = yawQuat;
         } else {
-          player.quaternion = {
-            x: 0,
-            y: Math.sin(yaw / 2),
-            z: 0,
-            w: Math.cos(yaw / 2),
-          };
+          player.quaternion = new Quaternion(
+            0,
+            Math.sin(yaw / 2),
+            0,
+            Math.cos(yaw / 2)
+          );
         }
 
         // Apply velocity
@@ -176,6 +197,11 @@ async function init() {
 
             if (hitPlayer) hitPlayer.damage(25);
 
+            // hitPlayer!.physicsObject.rigidBody.applyImpulse(
+            //   { x: 5, y: 0.5, z: 0 },
+            //   true
+            // );
+
             io.emit("user_action", {
               id: socket.id,
               type: "attack",
@@ -202,11 +228,17 @@ async function init() {
 
   // update loop
   function tick() {
-    world.update();
+    const now = Date.now();
+    const delta = (now - lastTime) / 1000;
+    lastTime = now;
 
-    if (physicsManager.isReady()) physicsManager.update(0, 0);
+    const elapsedTime = (now - startTime) / 1000; // seconds since init
 
-    const { players } = world.getState();
+    world.update(delta);
+
+    if (physicsManager.isReady()) physicsManager.update(elapsedTime, delta);
+
+    const { players, vehicles } = world.getState();
 
     type PlayerData = {
       velocity: Vector3;
@@ -234,7 +266,21 @@ async function init() {
       };
     }
 
+    const worldData = {
+      vehicles: vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        position: vehicle.position,
+        quaternion: vehicle.quaternion,
+        wheels: vehicle.wheels.map((wheel) => ({
+          radius: wheel.radius,
+          position: wheel.position,
+          quaternion: wheel.quaternion,
+        })),
+      })),
+    };
+
     io.emit("updatePlayers", transformedPlayers);
+    io.emit("updateWorld", worldData);
   }
 }
 init();

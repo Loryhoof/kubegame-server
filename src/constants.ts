@@ -1,6 +1,8 @@
 export const speedFactor = 0.05;
 export const serverHz = 90;
 
+export const Rad2Deg = 180 / Math.PI;
+
 export function multiplyScalar(
   vector: { x: number; y: number; z: number },
   scalar: number

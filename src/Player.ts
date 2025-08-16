@@ -1,7 +1,8 @@
 import RAPIER, { QueryFilterFlags } from "@dimforge/rapier3d-compat";
 import Vector3 from "./Math/Vector3";
-import { Quaternion } from "./mathUtils";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
+import { Quaternion } from "./mathUtils";
+import Vehicle from "./Vehicle/Vehicle";
 
 class Player {
   public id: string;
@@ -22,6 +23,8 @@ class Player {
   private lastGroundedTime: number = 0;
   private jumpCooldown: number = 200; // ms between jumps
   private coyoteTime: number = 100; // ms grace period after leaving ground
+
+  private controlledObject: Vehicle | null = null;
 
   // interaction
   public wantsToInteract: boolean = false;
@@ -44,6 +47,16 @@ class Player {
   }
 
   update() {
+    if (this.controlledObject) {
+      this.physicsObject.rigidBody.sleep();
+      this.setPosition(
+        this.controlledObject.physicsObject.rigidBody.translation() as Vector3
+      );
+
+      this.setQuaternion(this.controlledObject.quaternion);
+      return; //
+    }
+
     // Check grounded before movement
     if (this.isGrounded()) {
       this.grounded = true;
@@ -76,6 +89,10 @@ class Player {
   setPosition(position: Vector3) {
     this.position = position;
   }
+  setQuaternion(quaternion: Quaternion) {
+    this.quaternion = quaternion;
+  }
+
   teleportTo(position: Vector3) {
     PhysicsManager.getInstance().setTranslation(this.physicsObject, position);
   }
@@ -95,6 +112,15 @@ class Player {
 
   isGrounded(): boolean {
     return PhysicsManager.getInstance().grounded(this.physicsObject.rigidBody);
+  }
+
+  enterVehicle(vehicle: Vehicle) {
+    this.controlledObject = vehicle;
+    vehicle.setDriver(this);
+  }
+
+  exitVehicle() {
+    this.controlledObject = null;
   }
 
   jump() {
