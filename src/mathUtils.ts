@@ -10,6 +10,10 @@ function generateUUID() {
   });
 }
 
+function getVectorLength(vec: Vector3) {
+  return Math.sqrt(vec.x ** 2 + vec.y ** 2 + vec.z ** 2);
+}
+
 function randomHex(): string {
   return (
     "#" +
@@ -184,4 +188,5 @@ export {
   getYawQuaternion,
   isFacingHit,
   clamp,
+  getVectorLength,
 };

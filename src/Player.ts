@@ -24,7 +24,7 @@ class Player {
   private jumpCooldown: number = 200; // ms between jumps
   private coyoteTime: number = 100; // ms grace period after leaving ground
 
-  private controlledObject: Vehicle | null = null;
+  public controlledObject: Vehicle | null = null;
 
   // interaction
   public wantsToInteract: boolean = false;
@@ -49,9 +49,12 @@ class Player {
   update() {
     if (this.controlledObject) {
       this.physicsObject.rigidBody.sleep();
-      this.setPosition(
-        this.controlledObject.physicsObject.rigidBody.translation() as Vector3
-      );
+      // this.setPosition(
+      //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
+      // );
+
+      const seatPos = this.controlledObject.getSeatPosition(this);
+      this.setPosition(seatPos);
 
       this.setQuaternion(this.controlledObject.quaternion);
       return; //
@@ -115,8 +118,8 @@ class Player {
   }
 
   enterVehicle(vehicle: Vehicle) {
+    vehicle.enterVehicle(this);
     this.controlledObject = vehicle;
-    vehicle.setDriver(this);
   }
 
   exitVehicle() {

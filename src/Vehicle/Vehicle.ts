@@ -4,12 +4,18 @@ import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import Player from "../Player";
 import Wheel from "./Wheel";
 
+type Seat = {
+  position: Vector3;
+  type: "driver" | "passenger";
+  seater: Player | null;
+};
+
 export default class Vehicle {
   public id = generateUUID();
   public position: Vector3;
   public quaternion: Quaternion = new Quaternion();
 
-  private driver: Player | null = null;
+  public driver: Player | null = null;
 
   public physicsObject: PhysicsObject;
 
@@ -18,10 +24,14 @@ export default class Vehicle {
   // car specs
   private wheelBase: number = 2.55;
   private rearTrack: number = 1.525;
-  private turnRadius: number = 10.8;
+  private turnRadius: number = 10.8 * 0.5;
 
   private ackermannAngleLeft: number = 0;
   private ackermannAngleRight: number = 0;
+
+  private steerSpeed: number = 2;
+
+  private seats: Seat[] = [];
 
   constructor(position: Vector3) {
     this.position = position;
@@ -58,10 +68,44 @@ export default class Vehicle {
         "RearRight"
       ),
     ];
+
+    this.seats = [
+      { position: new Vector3(0.5, 0, 0.5), type: "driver", seater: null },
+      { position: new Vector3(-0.5, 0, 0.5), type: "passenger", seater: null },
+      { position: new Vector3(-0.5, 0, -0.5), type: "passenger", seater: null },
+      { position: new Vector3(-0.5, 0, -0.5), type: "passenger", seater: null },
+    ];
   }
 
-  setDriver(player: Player) {
-    this.driver = player;
+  // setDriver(player: Player) {
+  //   this.driver = player;
+  // }
+
+  enterVehicle(player: Player) {
+    console.log(player.controlledObject);
+    if (player.controlledObject) return;
+
+    const seat = this.seats.find((s) => s.seater == null);
+
+    console.log(seat);
+
+    if (!seat) return;
+
+    if (seat.type == "driver") this.driver = player;
+
+    seat.seater = player;
+
+    console.log("TRIGGEREDDD");
+  }
+
+  getSeatPosition(player: Player): Vector3 {
+    const seat = this.seats.find((item) => item.seater == player);
+
+    if (!seat) return new Vector3();
+
+    return new Vector3()
+      .copy(this.physicsObject.rigidBody.translation() as Vector3)
+      .add(seat.position.clone().applyQuaternion(this.quaternion));
   }
 
   updateControls() {
@@ -88,24 +132,23 @@ export default class Vehicle {
     //   );
     // }
 
-    const steerInput = a ? -1 : 1;
+    let steerInput = 0;
+    if (a) steerInput = 1; // left
+    else if (d) steerInput = -1; // right
+
     // right
     if (d) {
       this.ackermannAngleLeft =
-        Rad2Deg *
         Math.atan(this.wheelBase / (this.turnRadius + this.rearTrack / 2)) *
         steerInput;
       this.ackermannAngleRight =
-        Rad2Deg *
         Math.atan(this.wheelBase / (this.turnRadius - this.rearTrack / 2)) *
         steerInput;
     } else if (a) {
       this.ackermannAngleLeft =
-        Rad2Deg *
         Math.atan(this.wheelBase / (this.turnRadius - this.rearTrack / 2)) *
         steerInput;
       this.ackermannAngleRight =
-        Rad2Deg *
         Math.atan(this.wheelBase / (this.turnRadius + this.rearTrack / 2)) *
         steerInput;
     } else {
@@ -116,11 +159,17 @@ export default class Vehicle {
 
   update(delta: number) {
     this.wheels.forEach((wheel) => {
-      if (wheel.wheelType == "FrontLeft")
-        wheel.steerAngle = this.ackermannAngleLeft;
+      let targetSteerAngle = 0;
 
-      if (wheel.wheelType == "FrontRight")
-        wheel.steerAngle = this.ackermannAngleRight;
+      if (wheel.wheelType === "FrontLeft")
+        targetSteerAngle = this.ackermannAngleLeft;
+      if (wheel.wheelType === "FrontRight")
+        targetSteerAngle = this.ackermannAngleRight;
+
+      // Gradually approach target angle
+      wheel.steerAngle +=
+        (targetSteerAngle - wheel.steerAngle) *
+        Math.min(1, this.steerSpeed * delta);
 
       wheel.update(delta);
     });

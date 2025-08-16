@@ -64,6 +64,10 @@ export default class Vector3 {
     return this;
   }
 
+  length(): number {
+    return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
+  }
+
   applyQuaternion(q: { x: number; y: number; z: number; w: number }): this {
     const x = this.x,
       y = this.y,
@@ -88,5 +92,12 @@ export default class Vector3 {
   // Dot product with another vector
   dot(vec: Vector3): number {
     return this.x * vec.x + this.y * vec.y + this.z * vec.z;
+  }
+
+  copy(vec: Vector3): this {
+    this.x = vec.x;
+    this.y = vec.y;
+    this.z = vec.z;
+    return this;
   }
 }
