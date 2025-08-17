@@ -43,6 +43,9 @@ class World {
     const car = new Vehicle(new Vector3(25, 5, 0));
     this.vehicles.push(car);
 
+    const car2 = new Vehicle(new Vector3(40, 5, 0));
+    this.vehicles.push(car2);
+
     const box = new Box(
       5,
       5,
@@ -70,6 +73,15 @@ class World {
       "#ff00ff"
     );
 
+    const box4 = new Box(
+      5,
+      0.5,
+      5,
+      new Vector3(30, 0.5, 20),
+      new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 6),
+      "#0000ff"
+    );
+
     setInterval(() => {
       if (this.interactables.length >= 10) return;
 
@@ -87,7 +99,7 @@ class World {
       this.io.emit("interactableCreated", pickup);
     }, 5000);
 
-    this.entities.push(box, box2, box3);
+    this.entities.push(box, box2, box3, box4);
     //this.interactables.push(interactable, interactable2, interactable3);
 
     //physics.createBoxCollider({ x: 5, y: 5, z: 5 }, { x: 5, y: 0, z: 5 });

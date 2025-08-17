@@ -28,9 +28,12 @@ class Player {
 
   // interaction
   public wantsToInteract: boolean = false;
+  public lastInteractedTime: number = 0;
 
   // anim/keys
   public keys: Record<string, boolean> = {};
+
+  public isSitting: boolean = false;
 
   constructor(
     id: string,
@@ -48,6 +51,7 @@ class Player {
 
   update() {
     if (this.controlledObject) {
+      this.isSitting = true;
       this.physicsObject.rigidBody.sleep();
       // this.setPosition(
       //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
@@ -56,8 +60,16 @@ class Player {
       const seatPos = this.controlledObject.getSeatPosition(this);
       this.setPosition(seatPos);
 
-      this.setQuaternion(this.controlledObject.quaternion);
-      return; //
+      // please fix this.. we do opposite quaternion which i feel like is bad at runtime
+      const oppositeQuat = new Quaternion();
+      oppositeQuat.setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+
+      this.setQuaternion(
+        this.controlledObject.quaternion.clone().multiply(oppositeQuat)
+      );
+      return;
+    } else {
+      this.isSitting = false;
     }
 
     // Check grounded before movement
@@ -123,7 +135,17 @@ class Player {
   }
 
   exitVehicle() {
+    if (!this.controlledObject) return;
+
+    const lastPosition = this.controlledObject.position.clone();
+    const lastQuaternion = this.controlledObject.quaternion.clone();
+
+    this.controlledObject.exitVehicle(this);
     this.controlledObject = null;
+
+    this.teleportTo(
+      lastPosition.add(new Vector3(2, 0, 0).applyQuaternion(lastQuaternion))
+    );
   }
 
   jump() {

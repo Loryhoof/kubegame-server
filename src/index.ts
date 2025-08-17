@@ -42,35 +42,43 @@ const io = new Server(server, {
 });
 
 const physicsManager = PhysicsManager.getInstance();
+const readyPlayers = new Set<string>(); // track players that called readyForWorld
 
 async function init() {
   await physicsManager.init();
 
   setInterval(tick, 1000 / serverHz);
 
+  const world = new World(io);
+
   io.on("connection", (socket) => {
     console.log("connected!", socket.id);
 
     socket.broadcast.emit("addPlayer", socket.id);
 
-    // const { zones, colliders } = world.getState();
-    const { entities, interactables, vehicles } = world.getState();
-    socket.emit("initWorld", {
-      entities: entities,
-      interactables: interactables,
-      vehicles: vehicles.map((vehicle) => ({
-        id: vehicle.id,
-        position: vehicle.position,
-        quaternion: vehicle.quaternion,
-        wheels: vehicle.wheels.map((wheel) => ({
-          radius: wheel.radius,
-          position: wheel.position,
-          quaternion: wheel.quaternion,
-        })),
-      })),
-    });
+    // Player marks themselves as ready
+    socket.on("readyForWorld", () => {
+      readyPlayers.add(socket.id);
 
-    world.addPlayer(socket.id);
+      const { entities, interactables, vehicles } = world.getState();
+      socket.emit("initWorld", {
+        entities,
+        interactables,
+        vehicles: vehicles.map((vehicle) => ({
+          id: vehicle.id,
+          position: vehicle.position,
+          quaternion: vehicle.quaternion,
+          wheels: vehicle.wheels.map((wheel) => ({
+            radius: wheel.radius,
+            position: wheel.position,
+            quaternion: wheel.quaternion,
+            worldPosition: wheel.worldPosition,
+          })),
+        })),
+      });
+
+      world.addPlayer(socket.id);
+    });
 
     type PlayerInput = {
       keys: {
@@ -88,12 +96,13 @@ async function init() {
     };
 
     socket.on("pingCheck", (startTime) => {
-      // Immediately send back the same timestamp to client
       socket.emit("pongCheck", startTime);
     });
 
     socket.on("playerInput", (data: PlayerInput) => {
-      const { players } = world.getState();
+      if (!readyPlayers.has(socket.id)) return; // ignore input if not ready
+
+      const { players, vehicles } = world.getState();
       const player = players.get(socket.id);
       if (!player) return;
 
@@ -107,20 +116,18 @@ async function init() {
       if (data.keys[" "]) player.jump();
 
       player.keys = data.keys;
-
-      // console.log(inputDir);
-
-      // if (data.keys.e) {
-      //   // if (Date.now() - player.lastAttackTime >= 500) {
-      //   //   player.lastAttackTime = Date.now();
-      //   //   socket.emit("user_action", { type: "attack" });
-      //   // }
-      //   player.wantsToInteract = true
-      // }
-
       player.wantsToInteract = data.keys.e;
 
-      if (player.wantsToInteract) {
+      if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
+        player.lastInteractedTime = Date.now();
+
+        console.log("pressing e");
+
+        if (player.controlledObject) {
+          player.exitVehicle();
+          return;
+        }
+
         vehicles.forEach((vehicle) => {
           if (vehicle.position.distanceTo(player.position) <= 2) {
             player.enterVehicle(vehicle);
@@ -143,10 +150,7 @@ async function init() {
         );
 
         const yawQuat = getYawQuaternion(cameraQuat);
-
         const worldDir = applyQuaternion(inputDir, yawQuat);
-
-        // --- YAW ONLY: make player face movement direction ---
         const yaw = Math.atan2(-worldDir.x, -worldDir.z);
 
         if (data.keys.mouseRight) {
@@ -160,11 +164,13 @@ async function init() {
           );
         }
 
-        // Apply velocity
+        // if(player.controlledObject) {
+        //   player.quaternion = player.controlledObject.quaternion
+        // }
+
         let sprintFactor = data.keys.shift ? 1.5 : 1;
         player.velocity.x = worldDir.x * sprintFactor * 5;
         player.velocity.z = worldDir.z * sprintFactor * 5;
-        //player.velocity.y = -9.81;
       } else {
         player.velocity.x = 0;
         player.velocity.z = 0;
@@ -173,13 +179,6 @@ async function init() {
       if (data.keys.mouseLeft) {
         if (Date.now() - player.lastAttackTime >= 500) {
           player.lastAttackTime = Date.now();
-
-          const cameraQuat = {
-            x: data.quaternion[0],
-            y: data.quaternion[1],
-            z: data.quaternion[2],
-            w: data.quaternion[3],
-          };
 
           const forward = new Vector3(0, 0, -1);
           forward.applyQuaternion(player.quaternion);
@@ -194,13 +193,7 @@ async function init() {
 
           if (hit && hit.hit && hit.hit.collider) {
             const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
-
             if (hitPlayer) hitPlayer.damage(25);
-
-            // hitPlayer!.physicsObject.rigidBody.applyImpulse(
-            //   { x: 5, y: 0.5, z: 0 },
-            //   true
-            // );
 
             io.emit("user_action", {
               id: socket.id,
@@ -219,12 +212,11 @@ async function init() {
     });
 
     socket.on("disconnect", () => {
+      readyPlayers.delete(socket.id);
       world.removePlayer(socket.id);
       socket.broadcast.emit("removePlayer", socket.id);
     });
   });
-
-  const world = new World(io);
 
   // update loop
   function tick() {
@@ -235,7 +227,6 @@ async function init() {
     const elapsedTime = (now - startTime) / 1000; // seconds since init
 
     world.update(delta);
-
     if (physicsManager.isReady()) physicsManager.update(elapsedTime, delta);
 
     const { players, vehicles } = world.getState();
@@ -249,10 +240,10 @@ async function init() {
       quaternion: Quaternion;
       color: string;
       keys: any;
+      isSitting: boolean;
     };
 
     const transformedPlayers: Record<string, PlayerData> = {};
-
     for (const [id, player] of players.entries()) {
       transformedPlayers[id] = {
         velocity: player.velocity,
@@ -263,6 +254,7 @@ async function init() {
         quaternion: player.quaternion,
         color: player.color,
         keys: player.keys,
+        isSitting: player.isSitting,
       };
     }
 
@@ -275,12 +267,19 @@ async function init() {
           radius: wheel.radius,
           position: wheel.position,
           quaternion: wheel.quaternion,
+          worldPosition: wheel.worldPosition,
         })),
       })),
     };
 
-    io.emit("updatePlayers", transformedPlayers);
-    io.emit("updateWorld", worldData);
+    // only send to ready players
+    for (const id of readyPlayers) {
+      const socket = io.sockets.sockets.get(id);
+      if (socket) {
+        socket.emit("updatePlayers", transformedPlayers);
+        socket.emit("updateWorld", worldData);
+      }
+    }
   }
 }
 init();

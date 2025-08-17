@@ -255,7 +255,7 @@ export default class PhysicsManager {
     let maxToi = toi;
     let solid = false;
 
-    let hit = this.physicsWorld.castRay(
+    let hit = (this.physicsWorld as RAPIER.World).castRay(
       ray,
       maxToi,
       solid,

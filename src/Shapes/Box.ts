@@ -29,7 +29,8 @@ export default class Box {
 
     this.physicsObject = PhysicsManager.getInstance().createFixedBox(
       position,
-      new Vector3(width, height, depth)
+      new Vector3(width, height, depth),
+      this.quaternion
     );
   }
 }

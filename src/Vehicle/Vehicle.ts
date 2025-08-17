@@ -15,8 +15,6 @@ export default class Vehicle {
   public position: Vector3;
   public quaternion: Quaternion = new Quaternion();
 
-  public driver: Player | null = null;
-
   public physicsObject: PhysicsObject;
 
   public wheels: Wheel[] = [];
@@ -42,60 +40,73 @@ export default class Vehicle {
       new Wheel(
         this,
         0.5,
-        new Vector3(1.5, -0.2, 1.5),
+        new Vector3(1, -0.2, 1.5),
         new Quaternion(),
         "FrontLeft"
       ),
       new Wheel(
         this,
         0.5,
-        new Vector3(-1.5, -0.2, 1.5),
+        new Vector3(-1, -0.2, 1.5),
         new Quaternion(),
         "FrontRight"
       ),
       new Wheel(
         this,
         0.5,
-        new Vector3(1.5, -0.2, -1.5),
+        new Vector3(1, -0.2, -1.5),
         new Quaternion(),
         "RearLeft"
       ),
       new Wheel(
         this,
         0.5,
-        new Vector3(-1.5, -0.2, -1.5),
+        new Vector3(-1, -0.2, -1.5),
         new Quaternion(),
         "RearRight"
       ),
     ];
 
     this.seats = [
-      { position: new Vector3(0.5, 0, 0.5), type: "driver", seater: null },
-      { position: new Vector3(-0.5, 0, 0.5), type: "passenger", seater: null },
-      { position: new Vector3(-0.5, 0, -0.5), type: "passenger", seater: null },
-      { position: new Vector3(-0.5, 0, -0.5), type: "passenger", seater: null },
+      { position: new Vector3(0.45, 0.2, 0.2), type: "driver", seater: null },
+      {
+        position: new Vector3(-0.5, 0.2, 0.2),
+        type: "passenger",
+        seater: null,
+      },
+      {
+        position: new Vector3(-0.5, 0.2, -0.6),
+        type: "passenger",
+        seater: null,
+      },
+      {
+        position: new Vector3(0.45, 0.2, -0.6),
+        type: "passenger",
+        seater: null,
+      },
     ];
   }
 
-  // setDriver(player: Player) {
-  //   this.driver = player;
-  // }
+  getDriver(): Player | null {
+    return this.seats[0].seater != null ? this.seats[0].seater : null;
+  }
 
   enterVehicle(player: Player) {
-    console.log(player.controlledObject);
     if (player.controlledObject) return;
 
     const seat = this.seats.find((s) => s.seater == null);
 
-    console.log(seat);
-
     if (!seat) return;
 
-    if (seat.type == "driver") this.driver = player;
-
     seat.seater = player;
+  }
 
-    console.log("TRIGGEREDDD");
+  exitVehicle(player: Player) {
+    const seat = this.seats.find((s) => s.seater == player);
+
+    if (!seat) return console.log("Player not found when exiting vehicle");
+
+    seat.seater = null;
   }
 
   getSeatPosition(player: Player): Vector3 {
@@ -109,11 +120,25 @@ export default class Vehicle {
   }
 
   updateControls() {
-    if (!this.driver) return;
-
     const forceFactor = 5;
 
-    const { w, a, s, d } = this.driver.keys;
+    const driver = this.seats[0].seater;
+
+    if (!driver) return;
+
+    const { w, a, s, d, r } = driver.keys;
+
+    if (r) {
+      PhysicsManager.getInstance().setTranslation(
+        this.physicsObject,
+        new Vector3(30, 2, 30)
+      );
+
+      this.physicsObject.rigidBody.setRotation(new Quaternion(), true);
+
+      this.physicsObject.rigidBody.setLinvel(new Vector3(0, 0, 0), true);
+      this.physicsObject.rigidBody.setAngvel(new Vector3(0, 0, 0), true);
+    }
 
     // if (w) {
     //   this.physicsObject.rigidBody.applyImpulse(

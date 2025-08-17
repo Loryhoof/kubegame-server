@@ -12,12 +12,13 @@ export default class Wheel {
   public position: Vector3;
   public quaternion: Quaternion;
   public baseQuaternion: Quaternion;
+  public basePosition: Vector3;
 
   // Suspension
-  private restLength: number = 0.4;
+  private restLength: number = 0.1;
   private springTravel: number = 0.2;
 
-  private springStiffness: number = 33000;
+  private springStiffness: number = 35000;
   private damperStiffness: number = 3000;
 
   private minLength: number;
@@ -38,6 +39,10 @@ export default class Wheel {
   private Fy: number = 0;
   private brakeForce: number = 0;
 
+  private dragCoeff: number = 2;
+
+  public worldPosition: Vector3 = new Vector3();
+
   constructor(
     parent: Vehicle,
     radius: number,
@@ -56,29 +61,34 @@ export default class Wheel {
     this.maxLength = this.restLength + this.springTravel;
 
     this.baseQuaternion = this.quaternion.clone();
+    this.basePosition = this.position.clone();
   }
 
   update(delta: number) {
     const phy = PhysicsManager.getInstance();
 
     // 1️⃣ Wheel world rotation including steer
-    const wheelQuat = this.parent.quaternion
-      .clone()
-      .multiply(
-        new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), this.steerAngle)
-      );
+    // Corrected
+    const bodyQuat = this.parent.quaternion.clone();
 
-    // 2️⃣ Wheel world position including steer
+    // World position: only parent rotation, no steering
     const wheelWorldPos = this.parent.position
       .clone()
-      .add(this.position.clone().applyQuaternion(wheelQuat));
+      .add(this.position.clone().applyQuaternion(bodyQuat));
+
+    // Orientation: parent rotation * steering rotation
+    const steerQuat = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 1, 0),
+      this.steerAngle
+    );
+    const wheelQuat = bodyQuat.clone().multiply(steerQuat);
 
     // 3️⃣ Suspension raycast
     const worldDown = DOWN.clone().applyQuaternion(wheelQuat);
     const rayHit = phy.raycastFull(
       wheelWorldPos,
       worldDown,
-      undefined,
+      this.parent.physicsObject.rigidBody,
       this.maxLength + this.radius
     );
     if (!rayHit?.hit) return;
@@ -120,22 +130,27 @@ export default class Wheel {
 
     // 8️⃣ Driver input
     let forwardInput = 0;
-    if (this.parent.driver?.keys.w) forwardInput = 1;
-    else if (this.parent.driver?.keys.s) forwardInput = -1;
+
+    const speed = 0.3;
+
+    const driver = this.parent.getDriver();
+
+    if (driver?.keys.w) forwardInput = speed;
+    else if (driver?.keys.s) forwardInput = -speed;
 
     const normalForce = this.suspensionForce.length();
-    const tireGrip = 1; // adjustable
+    const tireGrip = 2; // adjustable
 
     // 9️⃣ Longitudinal force (throttle)
     this.Fx = forwardInput * 0.5 * normalForce * tireGrip;
 
     // 🔟 Braking force (opposes forward velocity)
-    if (this.parent.driver?.keys[" "]) {
+    if (driver?.keys[" "]) {
       const forwardVel = new Vector3()
         .copy(wheelVelocity as Vector3)
         .dot(forwardDir);
       const maxBrake = 5000;
-      console.log(-forwardVel * 50);
+      // console.log(-forwardVel * 50);
       this.brakeForce = clamp(forwardVel * 500, 0, maxBrake); // 50 is brake stiffness
     } else {
       this.brakeForce = 0;
@@ -151,9 +166,20 @@ export default class Wheel {
     );
 
     // 1️⃣2️⃣ Convert to world space and total force
+
+    const forwardVel = new Vector3()
+      .copy(wheelVelocity as Vector3)
+      .dot(forwardDir);
+
+    const dragForce = forwardDir
+      .clone()
+      .multiplyScalar(-this.dragCoeff * forwardVel * Math.abs(forwardVel));
+
     const fXWorld = forwardDir
       .clone()
-      .multiplyScalar(this.Fx - this.brakeForce);
+      .multiplyScalar(this.Fx - this.brakeForce)
+      .add(dragForce);
+
     const fYWorld = rightDir.clone().multiplyScalar(this.Fy);
 
     const totalForce = this.suspensionForce.clone().add(fXWorld).add(fYWorld);
@@ -167,6 +193,25 @@ export default class Wheel {
     );
 
     // 1️⃣4️⃣ Update wheel quaternion for rendering
-    this.quaternion = this.baseQuaternion.clone().multiply(wheelQuat);
+
+    // Wheel orientation = vehicle rotation * steer rotation
+    const steerQuat2 = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 1, 0),
+      this.steerAngle
+    );
+    this.quaternion = this.baseQuaternion.clone().multiply(steerQuat2);
+
+    // Compute the wheel’s world position for rendering
+    const wheelCenterWorldPos = targetPoint
+      .clone()
+      .add(worldDown.clone().multiplyScalar(-this.radius));
+
+    // Convert to local space relative to parent
+
+    // actually local, dont have to change variable name, ignore this
+    this.worldPosition = wheelCenterWorldPos
+      .clone()
+      .sub(this.parent.position) // remove parent world translation
+      .applyQuaternion(this.parent.quaternion.clone().invert()); // rotate into parent local space
   }
 }
