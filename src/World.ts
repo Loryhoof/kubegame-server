@@ -1,19 +1,29 @@
 import { Server } from "socket.io";
-import { speedFactor } from "./constants";
-import TriggerZone from "./Entities/TriggerZone";
 
 import Zone from "./interfaces/Zone";
-import { randomHex, randomIntBetween } from "./mathUtils";
+import { Quaternion, randomHex, randomIntBetween } from "./mathUtils";
 import Player from "./Player";
 import Collider from "./interfaces/Collider";
 import Box from "./Shapes/Box";
 import PhysicsManager from "./PhysicsManager";
 import Vector3 from "./Math/Vector3";
 import Interactable from "./interfaces/Interactable";
-import RAPIER, { Quaternion } from "@dimforge/rapier3d-compat";
+import RAPIER from "@dimforge/rapier3d-compat";
 import Pickup from "./Entities/Pickup";
+import Vehicle from "./Vehicle/Vehicle";
+
+import { createNoise2D } from "simplex-noise";
 
 const zoneSpawnLimit: number = 10;
+
+export type TerrainData = {
+  position: Vector3;
+  quaternion: Quaternion;
+  heights: Float32Array;
+  nrows: number;
+  ncols: number;
+  scale: Vector3;
+};
 
 class World {
   private io: Server;
@@ -22,6 +32,8 @@ class World {
   private colliders: Collider[] = [];
   private entities: any[] = [];
   private interactables: Interactable[] = [];
+  private vehicles: Vehicle[] = [];
+  private terrains: TerrainData[] = [];
 
   constructor(io: Server) {
     this.io = io;
@@ -31,34 +43,56 @@ class World {
     const physics = PhysicsManager.getInstance();
 
     // ground
-    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(100, 0.1, 100));
+    // physics.createFixedBox(
+    //   new Vector3(0, -0.5, 0),
+    //   new Vector3(5000, 0.1, 5000)
+    // );
 
-    const box = new Box(
-      5,
-      5,
-      5,
-      new Vector3(0, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
-      "#0000ff"
-    );
+    // car test
 
-    const box2 = new Box(
-      5,
-      3,
-      5,
-      new Vector3(5, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
-      "#00ff00"
-    );
+    const car = new Vehicle(new Vector3(-20, 10, 10));
+    this.vehicles.push(car);
 
-    const box3 = new Box(
-      5,
-      1.25,
-      5,
-      new Vector3(10, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
-      "#ff00ff"
-    );
+    const car2 = new Vehicle(new Vector3(-20, 5, 20));
+    this.vehicles.push(car2);
+
+    // const box = new Box(
+    //   5,
+    //   5,
+    //   5,
+    //   new Vector3(0, 0, 0),
+    //   new Quaternion(),
+    //   "#0000ff"
+    // );
+
+    // const box2 = new Box(
+    //   5,
+    //   3,
+    //   5,
+    //   new Vector3(5, 0, 0),
+    //   new Quaternion(),
+    //   "#00ff00"
+    // );
+
+    // const box3 = new Box(
+    //   5,
+    //   1.25,
+    //   5,
+    //   new Vector3(10, 0, 0),
+    //   new Quaternion(),
+    //   "#ff00ff"
+    // );
+
+    // const box4 = new Box(
+    //   5,
+    //   0.5,
+    //   5,
+    //   new Vector3(30, 0.5, 20),
+    //   new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 6),
+    //   "#0000ff"
+    // );
+
+    this.createTerrain();
 
     setInterval(() => {
       if (this.interactables.length >= 10) return;
@@ -77,7 +111,7 @@ class World {
       this.io.emit("interactableCreated", pickup);
     }, 5000);
 
-    this.entities.push(box, box2, box3);
+    // this.entities.push(box, box2, box3, box4);
     //this.interactables.push(interactable, interactable2, interactable3);
 
     //physics.createBoxCollider({ x: 5, y: 5, z: 5 }, { x: 5, y: 0, z: 5 });
@@ -103,7 +137,107 @@ class World {
     //   this.io.emit("zoneCreated", tz);
     // }, 20000);
   }
-  update() {
+  createTerrain() {
+    const nrows = 200;
+    const ncols = 200;
+    const heights = new Float32Array(nrows * ncols);
+
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+
+    const scaleFactor = 3;
+    const heightScaleFactor = 1.5;
+
+    const roadWidth = 5;
+    const roadFlattenHeight = -0.5;
+    const circleHeight = -0.5;
+
+    const circleA = { centerX: 30, centerZ: 30, radius: 10 };
+    const circleB = { centerX: 80, centerZ: 80, radius: 10 };
+
+    const noise2D = createNoise2D();
+
+    for (let x = 0; x < nrows; x++) {
+      for (let z = 0; z < ncols; z++) {
+        const index = x * ncols + z;
+
+        let noise = noise2D(x, z);
+
+        // Base terrain using noise/sin
+        let sinZ = Math.sin(z) * 0.1 + noise * 0.05;
+        let sinX = Math.sin(x) * 0.1 + noise * 0.05;
+        let currentHeight = sinX + sinZ;
+
+        // Distance from circle centers
+        const dxA = circleA.centerX - x;
+        const dzA = circleA.centerZ - z;
+        const distanceFromCircleA = Math.sqrt(dxA * dxA + dzA * dzA);
+
+        const dxB = circleB.centerX - x;
+        const dzB = circleB.centerZ - z;
+        const distanceFromCircleB = Math.sqrt(dxB * dxB + dzB * dzB);
+
+        const insideCircleA = distanceFromCircleA <= circleA.radius;
+        const insideCircleB = distanceFromCircleB <= circleB.radius;
+
+        // Flatten circles
+        if (insideCircleA || insideCircleB) {
+          currentHeight = circleHeight;
+        } else {
+          // Flatten road connecting the two circles (only outside circles)
+          const lineDX = circleB.centerX - circleA.centerX;
+          const lineDZ = circleB.centerZ - circleA.centerZ;
+          const lineLengthSquared = lineDX * lineDX + lineDZ * lineDZ;
+
+          // Project point (x,z) onto line AB
+          const t =
+            ((x - circleA.centerX) * lineDX + (z - circleA.centerZ) * lineDZ) /
+            lineLengthSquared;
+
+          if (t >= 0 && t <= 1) {
+            // Distance from point to line
+            const perpDist =
+              Math.abs(
+                lineDZ * (x - circleA.centerX) - lineDX * (z - circleA.centerZ)
+              ) / Math.sqrt(lineLengthSquared);
+            if (perpDist <= roadWidth / 2) {
+              currentHeight = roadFlattenHeight;
+            }
+          }
+        }
+
+        heights[index] = currentHeight;
+      }
+    }
+
+    const scale = new Vector3(
+      nrows * scaleFactor,
+      2 * heightScaleFactor,
+      ncols * scaleFactor
+    );
+
+    const terrainData: TerrainData = {
+      position,
+      quaternion,
+      heights,
+      nrows,
+      ncols,
+      scale,
+    };
+
+    this.terrains.push(terrainData);
+
+    PhysicsManager.getInstance().createHeightfield(
+      position,
+      quaternion,
+      heights,
+      scale,
+      nrows - 1,
+      ncols - 1
+    );
+  }
+
+  update(delta: number) {
     for (const [key, player] of this.players) {
       player.update();
 
@@ -181,6 +315,10 @@ class World {
       // }
     }
 
+    this.vehicles.forEach((vehicle) => {
+      vehicle.update(delta);
+    });
+
     // this.entities.forEach((entity) => {
     //   entity.update();
     // });
@@ -236,6 +374,19 @@ class World {
         position: entity.position,
         quaternion: entity.quaternion,
       })),
+
+      // vehicles: this.vehicles.map((vehicle) => ({
+      //   id: vehicle.id,
+      //   position: vehicle.position,
+      //   quaternion: vehicle.quaternion,
+      //   wheels: vehicle.wheels.map((wheel) => ({
+      //     radius: wheel.radius,
+      //     position: wheel.position,
+      //     quaternion: wheel.quaternion,
+      //   })),
+      // })),
+      vehicles: this.vehicles,
+      terrains: this.terrains,
     };
   }
 
@@ -251,11 +402,32 @@ class World {
     return null;
   }
 
+  addVehicle(position: Vector3, player?: Player) {
+    const car = new Vehicle(position);
+    this.vehicles.push(car);
+
+    const data = {
+      id: car.id,
+      position: car.position,
+      quaternion: car.quaternion,
+      wheels: car.wheels.map((wheel) => ({
+        radius: wheel.radius,
+        position: wheel.position,
+        quaternion: wheel.quaternion,
+        worldPosition: wheel.worldPosition,
+      })),
+    };
+
+    this.io.emit("addVehicle", data);
+
+    player?.enterVehicle(car);
+  }
+
   addPlayer(networkId: string) {
     const newPlayer = new Player(
       networkId,
       new Vector3(0, 0, 0),
-      { x: 0, y: 0, z: 0, w: 1 },
+      new Quaternion(0, 0, 0, 1),
       randomHex()
     );
 

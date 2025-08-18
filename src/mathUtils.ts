@@ -1,8 +1,5 @@
+import Quaternion from "./Math/Quaternion";
 import Vector3 from "./Math/Vector3";
-
-type Quaternion = { x: number; y: number; z: number; w: number };
-
-const zeroQuaternion: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 
 function generateUUID() {
   // RFC4122 version 4 compliant UUID generator (simple)
@@ -13,6 +10,10 @@ function generateUUID() {
   });
 }
 
+function getVectorLength(vec: Vector3) {
+  return Math.sqrt(vec.x ** 2 + vec.y ** 2 + vec.z ** 2);
+}
+
 function randomHex(): string {
   return (
     "#" +
@@ -20,6 +21,10 @@ function randomHex(): string {
       .toString(16)
       .padStart(6, "0")
   );
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function getYRotationQuaternion(q: Quaternion): Quaternion {
@@ -33,12 +38,8 @@ function getYRotationQuaternion(q: Quaternion): Quaternion {
 
   // Build quaternion for rotation around Y by yaw angle
   const halfYaw = yaw / 2;
-  return {
-    x: 0,
-    y: Math.sin(halfYaw),
-    z: 0,
-    w: Math.cos(halfYaw),
-  };
+
+  return new Quaternion(0, Math.sin(halfYaw), 0, Math.cos(halfYaw));
 }
 
 function applyQuaternion(vec: Vector3, q: Quaternion): Vector3 {
@@ -113,12 +114,7 @@ function getYawQuaternion(q: Quaternion): Quaternion {
   // Quaternion for yaw angle around Y axis is:
   // q = [0, sin(yaw/2), 0, cos(yaw/2)]
 
-  return {
-    x: 0,
-    y: Math.sin(yaw / 2),
-    z: 0,
-    w: Math.cos(yaw / 2),
-  };
+  return new Quaternion(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2));
 }
 
 function eulerToQuaternion(pitch: number, yaw: number, roll: number) {
@@ -184,7 +180,6 @@ export {
   applyQuaternion,
   Vector3,
   Quaternion,
-  zeroQuaternion,
   randomHex,
   generateUUID,
   randomIntBetween,
@@ -192,4 +187,6 @@ export {
   slerp,
   getYawQuaternion,
   isFacingHit,
+  clamp,
+  getVectorLength,
 };

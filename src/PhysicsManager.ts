@@ -115,7 +115,7 @@ export default class PhysicsManager {
   createFixedBox(
     position: Vector3,
     scale: Vector3,
-    rotation: Quaternion = new RAPIER.Quaternion(0, 0, 0, 1)
+    rotation: Quaternion = new Quaternion(0, 0, 0, 1)
   ): PhysicsObject {
     const rbDesc = RAPIER.RigidBodyDesc.fixed()
       .setTranslation(position.x, position.y, position.z)
@@ -152,9 +152,50 @@ export default class PhysicsManager {
     return { rigidBody, collider };
   }
 
+  createCar(position: Vector3): PhysicsObject {
+    let rbDesc = RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(position.x, position.y, position.z)
+      .setAdditionalMass(1500);
+    let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+
+    let boxColDesc = RAPIER.ColliderDesc.cuboid(1, 0.25, 2);
+    let collider = this.physicsWorld.createCollider(boxColDesc, rigidBody);
+
+    return { rigidBody, collider };
+  }
+
   createCharacterController() {
     const controller = this.physicsWorld.createCharacterController(0.01);
     return controller;
+  }
+
+  createHeightfield(
+    position: Vector3,
+    rotation: Quaternion,
+    heights: Float32Array,
+    scale: Vector3,
+    nrows: number,
+    ncols: number
+  ) {
+    const colliderDesc = RAPIER.ColliderDesc.heightfield(
+      nrows,
+      ncols,
+      heights,
+      scale
+    );
+    const collider = this.physicsWorld.createCollider(colliderDesc);
+
+    const rbDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(position.x, position.y, position.z)
+      .setRotation({
+        w: rotation.w,
+        x: rotation.x,
+        y: rotation.y,
+        z: rotation.z,
+      });
+    const rigidbody = this.physicsWorld.createRigidBody(rbDesc);
+
+    return { rigidbody, collider };
   }
 
   setTranslation(physicsObject: PhysicsObject, vec: Vector3) {
@@ -243,7 +284,7 @@ export default class PhysicsManager {
     let maxToi = toi;
     let solid = false;
 
-    let hit = this.physicsWorld.castRay(
+    let hit = (this.physicsWorld as RAPIER.World).castRay(
       ray,
       maxToi,
       solid,

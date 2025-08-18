@@ -1,7 +1,8 @@
 import RAPIER, { QueryFilterFlags } from "@dimforge/rapier3d-compat";
 import Vector3 from "./Math/Vector3";
-import { Quaternion } from "./mathUtils";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
+import { Quaternion } from "./mathUtils";
+import Vehicle from "./Vehicle/Vehicle";
 
 class Player {
   public id: string;
@@ -23,11 +24,19 @@ class Player {
   private jumpCooldown: number = 200; // ms between jumps
   private coyoteTime: number = 100; // ms grace period after leaving ground
 
+  public controlledObject: Vehicle | null = null;
+
   // interaction
   public wantsToInteract: boolean = false;
+  public lastInteractedTime: number = 0;
+
+  // car spawning
+  public lastSpawnedCarTime: number = 0;
 
   // anim/keys
   public keys: Record<string, boolean> = {};
+
+  public isSitting: boolean = false;
 
   constructor(
     id: string,
@@ -44,6 +53,28 @@ class Player {
   }
 
   update() {
+    if (this.controlledObject) {
+      this.isSitting = true;
+      this.physicsObject.rigidBody.sleep();
+      // this.setPosition(
+      //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
+      // );
+
+      const seatPos = this.controlledObject.getSeatPosition(this);
+      this.setPosition(seatPos);
+
+      // please fix this.. we do opposite quaternion which i feel like is bad at runtime
+      const oppositeQuat = new Quaternion();
+      oppositeQuat.setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+
+      this.setQuaternion(
+        this.controlledObject.quaternion.clone().multiply(oppositeQuat)
+      );
+      return;
+    } else {
+      this.isSitting = false;
+    }
+
     // Check grounded before movement
     if (this.isGrounded()) {
       this.grounded = true;
@@ -76,6 +107,10 @@ class Player {
   setPosition(position: Vector3) {
     this.position = position;
   }
+  setQuaternion(quaternion: Quaternion) {
+    this.quaternion = quaternion;
+  }
+
   teleportTo(position: Vector3) {
     PhysicsManager.getInstance().setTranslation(this.physicsObject, position);
   }
@@ -95,6 +130,25 @@ class Player {
 
   isGrounded(): boolean {
     return PhysicsManager.getInstance().grounded(this.physicsObject.rigidBody);
+  }
+
+  enterVehicle(vehicle: Vehicle) {
+    vehicle.enterVehicle(this);
+    this.controlledObject = vehicle;
+  }
+
+  exitVehicle() {
+    if (!this.controlledObject) return;
+
+    const lastPosition = this.controlledObject.position.clone();
+    const lastQuaternion = this.controlledObject.quaternion.clone();
+
+    this.controlledObject.exitVehicle(this);
+    this.controlledObject = null;
+
+    this.teleportTo(
+      lastPosition.add(new Vector3(2, 0, 0).applyQuaternion(lastQuaternion))
+    );
   }
 
   jump() {
