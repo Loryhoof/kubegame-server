@@ -50,10 +50,10 @@ class World {
 
     // car test
 
-    const car = new Vehicle(new Vector3(-20, 10, 10));
+    const car = new Vehicle(this, new Vector3(-20, 10, 10));
     this.vehicles.push(car);
 
-    const car2 = new Vehicle(new Vector3(-20, 5, 20));
+    const car2 = new Vehicle(this, new Vector3(-20, 5, 20));
     this.vehicles.push(car2);
 
     // const box = new Box(
@@ -403,7 +403,7 @@ class World {
   }
 
   addVehicle(position: Vector3, player?: Player) {
-    const car = new Vehicle(position);
+    const car = new Vehicle(this, position);
     this.vehicles.push(car);
 
     const data = {
@@ -423,6 +423,12 @@ class World {
     player?.enterVehicle(car);
   }
 
+  removeVehicle(vehicle: Vehicle) {
+    const uuid = vehicle.id;
+    this.vehicles = this.vehicles.filter((vehicle) => vehicle.id !== uuid);
+    this.io.emit("vehicleRemoved", uuid);
+  }
+
   addPlayer(networkId: string) {
     const newPlayer = new Player(
       networkId,
@@ -434,6 +440,12 @@ class World {
     this.players.set(networkId, newPlayer);
   }
   removePlayer(networkId: string) {
+    const player = this.players.get(networkId);
+
+    if (!player) return;
+
+    PhysicsManager.getInstance().remove(player.physicsObject);
+
     this.players.delete(networkId);
   }
   removeZone(zone: Zone) {

@@ -71,6 +71,7 @@ export default class PhysicsManager {
 
   remove(physicsObject: PhysicsObject) {
     this.physicsWorld.removeRigidBody(physicsObject.rigidBody);
+    this.physicsWorld.removeCollider(physicsObject.collider);
   }
 
   createDynamicBox(position: Vector3, scale: Vector3): PhysicsObject {

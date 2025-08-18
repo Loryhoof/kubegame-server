@@ -2,7 +2,10 @@ import { Rad2Deg } from "../constants";
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import Player from "../Player";
+import World from "../World";
 import Wheel from "./Wheel";
+
+const INACTIVE_TIME_LIMIT = 10; // seconds
 
 type Seat = {
   position: Vector3;
@@ -31,7 +34,13 @@ export default class Vehicle {
 
   private seats: Seat[] = [];
 
-  constructor(position: Vector3) {
+  public lastTimeSinceOccupied: number;
+
+  private world: World;
+
+  constructor(world: World, position: Vector3) {
+    this.world = world;
+
     this.position = position;
 
     this.physicsObject = PhysicsManager.getInstance().createCar(position);
@@ -85,6 +94,8 @@ export default class Vehicle {
         seater: null,
       },
     ];
+
+    this.lastTimeSinceOccupied = Date.now();
   }
 
   getDriver(): Player | null {
@@ -107,6 +118,12 @@ export default class Vehicle {
     if (!seat) return console.log("Player not found when exiting vehicle");
 
     seat.seater = null;
+
+    const otherSeaters = this.seats.find((s) => s.seater != null);
+
+    if (!otherSeaters) {
+      this.lastTimeSinceOccupied = Date.now();
+    }
   }
 
   getSeatPosition(player: Player): Vector3 {
@@ -140,23 +157,6 @@ export default class Vehicle {
       this.physicsObject.rigidBody.setAngvel(new Vector3(0, 0, 0), true);
     }
 
-    // if (w) {
-    //   this.physicsObject.rigidBody.applyImpulse(
-    //     new Vector3(0, 0, forceFactor).applyQuaternion(
-    //       this.physicsObject.rigidBody.rotation()
-    //     ),
-    //     true
-    //   );
-    // }
-    // if (s) {
-    //   this.physicsObject.rigidBody.applyImpulse(
-    //     new Vector3(0, 0, -forceFactor).applyQuaternion(
-    //       this.physicsObject.rigidBody.rotation()
-    //     ),
-    //     true
-    //   );
-    // }
-
     let steerInput = 0;
     if (a) steerInput = 1; // left
     else if (d) steerInput = -1; // right
@@ -182,7 +182,23 @@ export default class Vehicle {
     }
   }
 
+  despawn() {
+    // making sure all players exit the vehicle
+    this.seats.forEach((seat) => {
+      if (seat.seater) {
+        seat.seater.exitVehicle();
+        seat.seater = null;
+      }
+    });
+
+    PhysicsManager.getInstance().remove(this.physicsObject);
+
+    this.world.removeVehicle(this);
+  }
+
   update(delta: number) {
+    const now = Date.now();
+
     this.wheels.forEach((wheel) => {
       let targetSteerAngle = 0;
 
@@ -206,5 +222,9 @@ export default class Vehicle {
     this.quaternion.set(rot.x, rot.y, rot.z, rot.w);
 
     this.updateControls();
+
+    if (now - this.lastTimeSinceOccupied >= INACTIVE_TIME_LIMIT * 1000) {
+      this.despawn();
+    }
   }
 }
