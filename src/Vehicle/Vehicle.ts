@@ -199,6 +199,11 @@ export default class Vehicle {
   update(delta: number) {
     const now = Date.now();
 
+    // Reset timer if anyone is in the car
+    if (this.seats.some((seat) => seat.seater != null)) {
+      this.lastTimeSinceOccupied = now;
+    }
+
     this.wheels.forEach((wheel) => {
       let targetSteerAngle = 0;
 
