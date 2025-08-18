@@ -5,7 +5,7 @@ import Player from "../Player";
 import World from "../World";
 import Wheel from "./Wheel";
 
-const INACTIVE_TIME_LIMIT = 10; // seconds
+const INACTIVE_TIME_LIMIT = 60; // seconds
 
 type Seat = {
   position: Vector3;

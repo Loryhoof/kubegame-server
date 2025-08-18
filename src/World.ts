@@ -444,6 +444,10 @@ class World {
 
     if (!player) return;
 
+    if (player.controlledObject) {
+      player.exitVehicle();
+    }
+
     PhysicsManager.getInstance().remove(player.physicsObject);
 
     this.players.delete(networkId);
