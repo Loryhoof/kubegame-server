@@ -169,6 +169,35 @@ export default class PhysicsManager {
     return controller;
   }
 
+  createHeightfield(
+    position: Vector3,
+    rotation: Quaternion,
+    heights: Float32Array,
+    scale: Vector3,
+    nrows: number,
+    ncols: number
+  ) {
+    const colliderDesc = RAPIER.ColliderDesc.heightfield(
+      nrows,
+      ncols,
+      heights,
+      scale
+    );
+    const collider = this.physicsWorld.createCollider(colliderDesc);
+
+    const rbDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(position.x, position.y, position.z)
+      .setRotation({
+        w: rotation.w,
+        x: rotation.x,
+        y: rotation.y,
+        z: rotation.z,
+      });
+    const rigidbody = this.physicsWorld.createRigidBody(rbDesc);
+
+    return { rigidbody, collider };
+  }
+
   setTranslation(physicsObject: PhysicsObject, vec: Vector3) {
     physicsObject.rigidBody.setTranslation(vec, true);
   }

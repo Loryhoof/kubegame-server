@@ -60,7 +60,7 @@ async function init() {
     socket.on("readyForWorld", () => {
       readyPlayers.add(socket.id);
 
-      const { entities, interactables, vehicles } = world.getState();
+      const { entities, interactables, vehicles, terrains } = world.getState();
       socket.emit("initWorld", {
         entities,
         interactables,
@@ -75,6 +75,7 @@ async function init() {
             worldPosition: wheel.worldPosition,
           })),
         })),
+        terrains: terrains,
       });
 
       world.addPlayer(socket.id);
@@ -88,6 +89,7 @@ async function init() {
         d: boolean;
         shift: boolean;
         e: boolean;
+        k: boolean;
         " ": boolean;
         mouseLeft: boolean;
         mouseRight: boolean;
@@ -133,6 +135,21 @@ async function init() {
             player.enterVehicle(vehicle);
           }
         });
+      }
+
+      if (data.keys.k && Date.now() - player.lastSpawnedCarTime >= 5000) {
+        if (player.controlledObject != null || player.isSitting) return;
+
+        player.lastSpawnedCarTime = Date.now();
+
+        world.addVehicle(
+          new Vector3(
+            player.position.x,
+            player.position.y + 5,
+            player.position.z
+          ),
+          player
+        );
       }
 
       const length = Math.sqrt(

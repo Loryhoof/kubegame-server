@@ -30,6 +30,9 @@ class Player {
   public wantsToInteract: boolean = false;
   public lastInteractedTime: number = 0;
 
+  // car spawning
+  public lastSpawnedCarTime: number = 0;
+
   // anim/keys
   public keys: Record<string, boolean> = {};
 

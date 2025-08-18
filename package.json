@@ -16,6 +16,7 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "https": "^1.0.0",
+    "simplex-noise": "^4.0.3",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
