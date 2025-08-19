@@ -194,6 +194,13 @@ async function init() {
       }
 
       if (data.keys.mouseLeft) {
+        if (player.controlledObject) {
+          if (player.controlledObject.getDriver() == player) {
+            player.controlledObject.setHorn(true);
+            return;
+          }
+        }
+
         if (Date.now() - player.lastAttackTime >= 500) {
           player.lastAttackTime = Date.now();
 
@@ -224,6 +231,14 @@ async function init() {
               hasHit: null,
             });
           }
+        }
+      } else {
+        if (
+          player.controlledObject &&
+          player.controlledObject.getDriver() == player &&
+          player.controlledObject.hornPlaying
+        ) {
+          player.controlledObject.setHorn(false);
         }
       }
     });
@@ -284,6 +299,7 @@ async function init() {
         id: vehicle.id,
         position: vehicle.position,
         quaternion: vehicle.quaternion,
+        hornPlaying: vehicle.hornPlaying,
         wheels: vehicle.wheels.map((wheel) => ({
           radius: wheel.radius,
           position: wheel.position,

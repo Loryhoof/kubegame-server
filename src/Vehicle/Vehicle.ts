@@ -4,7 +4,7 @@ import Player from "../Player";
 import World from "../World";
 import Wheel from "./Wheel";
 
-const INACTIVE_TIME_LIMIT = 60; // seconds
+const INACTIVE_TIME_LIMIT = 10; // seconds
 
 type Seat = {
   position: Vector3;
@@ -36,6 +36,9 @@ export default class Vehicle {
   public lastTimeSinceOccupied: number;
 
   private world: World;
+
+  // sounds
+  public hornPlaying: boolean = false;
 
   constructor(world: World, position: Vector3) {
     this.world = world;
@@ -97,6 +100,10 @@ export default class Vehicle {
     this.lastTimeSinceOccupied = Date.now();
   }
 
+  setHorn(bool: boolean) {
+    this.hornPlaying = bool;
+  }
+
   getDriver(): Player | null {
     return this.seats[0].seater != null ? this.seats[0].seater : null;
   }
@@ -115,6 +122,8 @@ export default class Vehicle {
     const seat = this.seats.find((s) => s.seater == player);
 
     if (!seat) return console.log("Player not found when exiting vehicle");
+
+    if ((seat.type = "driver")) this.hornPlaying = false;
 
     seat.seater = null;
 
@@ -191,6 +200,8 @@ export default class Vehicle {
     });
 
     PhysicsManager.getInstance().remove(this.physicsObject);
+
+    this.hornPlaying = false;
 
     this.world.removeVehicle(this);
   }
