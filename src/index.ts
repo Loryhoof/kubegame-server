@@ -81,6 +81,10 @@ async function init() {
       world.addPlayer(socket.id);
     });
 
+    socket.on("send-chat-message", (e) => {
+      socket.broadcast.emit("chat-message", e);
+    });
+
     type PlayerInput = {
       keys: {
         w: boolean;
