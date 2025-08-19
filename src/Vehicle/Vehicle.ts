@@ -1,4 +1,3 @@
-import { Rad2Deg } from "../constants";
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import Player from "../Player";

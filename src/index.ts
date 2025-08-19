@@ -258,6 +258,7 @@ async function init() {
       color: string;
       keys: any;
       isSitting: boolean;
+      controlledObject: { id: string } | null;
     };
 
     const transformedPlayers: Record<string, PlayerData> = {};
@@ -272,6 +273,9 @@ async function init() {
         color: player.color,
         keys: player.keys,
         isSitting: player.isSitting,
+        controlledObject: player.controlledObject
+          ? { id: player.controlledObject.id }
+          : null,
       };
     }
 
@@ -293,8 +297,10 @@ async function init() {
     for (const id of readyPlayers) {
       const socket = io.sockets.sockets.get(id);
       if (socket) {
-        socket.emit("updatePlayers", transformedPlayers);
-        socket.emit("updateWorld", worldData);
+        socket.emit("updateData", {
+          world: worldData,
+          players: transformedPlayers,
+        });
       }
     }
   }
