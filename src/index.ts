@@ -189,7 +189,7 @@ async function init() {
         //   player.quaternion = player.controlledObject.quaternion
         // }
 
-        let sprintFactor = data.keys.shift ? 1.5 : 1;
+        let sprintFactor = data.keys.shift ? 2 : 1;
         player.velocity.x = worldDir.x * sprintFactor * 5;
         player.velocity.z = worldDir.z * sprintFactor * 5;
       } else {
