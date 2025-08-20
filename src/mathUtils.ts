@@ -175,6 +175,69 @@ function slerp(
   };
 }
 
+/**
+ * Compute a point on a cubic Bezier curve at t.
+ */
+function cubicBezierPoint(
+  t: number,
+  p0: Vector3,
+  p1: Vector3,
+  p2: Vector3,
+  p3: Vector3
+): Vector3 {
+  const u = 1 - t;
+  const tt = t * t;
+  const uu = u * u;
+  const uuu = uu * u;
+  const ttt = tt * t;
+
+  return p0
+    .clone()
+    .multiplyScalar(uuu)
+    .add(p1.clone().multiplyScalar(3 * uu * t))
+    .add(p2.clone().multiplyScalar(3 * u * tt))
+    .add(p3.clone().multiplyScalar(ttt));
+}
+
+/**
+ * Approximate the distance from a point to a cubic Bezier curve.
+ */
+function distanceToBezier(
+  point: Vector3,
+  p0: Vector3,
+  p1: Vector3,
+  p2: Vector3,
+  p3: Vector3,
+  steps = 100
+): number {
+  let minDist = Infinity;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const curvePoint = cubicBezierPoint(t, p0, p1, p2, p3);
+    const dist = point.distanceTo(curvePoint);
+    if (dist < minDist) minDist = dist;
+  }
+
+  return minDist;
+}
+
+function worldToGrid(
+  worldX: number,
+  worldZ: number,
+  terrainScale: Vector3,
+  nrows: number,
+  ncols: number
+) {
+  const gridX = Math.round(
+    ((worldX - terrainScale.x / 2) / terrainScale.x) * nrows
+  );
+  const gridZ = Math.round(
+    ((worldZ - terrainScale.z / 2) / terrainScale.z) * ncols
+  );
+  return { gridX, gridZ };
+}
+
 export {
   getYRotationQuaternion,
   applyQuaternion,
@@ -189,4 +252,7 @@ export {
   isFacingHit,
   clamp,
   getVectorLength,
+  distanceToBezier,
+  cubicBezierPoint,
+  worldToGrid,
 };

@@ -1,7 +1,12 @@
 import { Server } from "socket.io";
 
 import Zone from "./interfaces/Zone";
-import { Quaternion, randomHex, randomIntBetween } from "./mathUtils";
+import {
+  distanceToBezier,
+  Quaternion,
+  randomHex,
+  randomIntBetween,
+} from "./mathUtils";
 import Player from "./Player";
 import Collider from "./interfaces/Collider";
 import Box from "./Shapes/Box";
@@ -55,6 +60,25 @@ class World {
 
     const car2 = new Vehicle(this, new Vector3(-20, 5, 20));
     this.vehicles.push(car2);
+
+    const brige = new Box(
+      6,
+      0.75,
+      33,
+      new Vector3(62, 0, 28),
+      new Quaternion().setFromEuler(0, Math.PI / 2, 0),
+      "#383838"
+    );
+    this.entities.push(brige);
+
+    // const bridge = new THREE.Mesh(
+    //   new THREE.BoxGeometry(6, 0.5, 30),
+    //   new THREE.MeshStandardMaterial({ color: 0x383838 })
+    // );
+    // bridge.position.set(60, 0, 28);
+    // bridge.rotation.y = Math.PI / 2;
+
+    // this.scene.add(bridge);
 
     // const box = new Box(
     //   5,
@@ -148,27 +172,30 @@ class World {
     const scaleFactor = 3;
     const heightScaleFactor = 1.5;
 
-    const roadWidth = 5;
-    const roadFlattenHeight = -0.5;
-    const circleHeight = -0.5;
+    const roadWidth = 6;
+    const roadFlattenHeight = -1.5;
 
-    const circleA = { centerX: 30, centerZ: 30, radius: 10 };
-    const circleB = { centerX: 80, centerZ: 80, radius: 10 };
+    const circleA = { centerX: 0, centerZ: 0, radius: 10 };
+    const circleB = { centerX: 200, centerZ: 200, radius: 10 };
 
     const noise2D = createNoise2D();
+
+    // Define Bezier control points for the road
+    const roadP0 = new Vector3(circleA.centerX, 0, circleA.centerZ);
+    const roadP1 = new Vector3(circleA.centerX + 100, 0, circleA.centerZ);
+    const roadP2 = new Vector3(circleB.centerX, 0, circleB.centerZ + 100);
+    const roadP3 = new Vector3(circleB.centerX, 0, circleB.centerZ);
 
     for (let x = 0; x < nrows; x++) {
       for (let z = 0; z < ncols; z++) {
         const index = x * ncols + z;
 
         let noise = noise2D(x, z);
-
-        // Base terrain using noise/sin
         let sinZ = Math.sin(z) * 0.1 + noise * 0.05;
         let sinX = Math.sin(x) * 0.1 + noise * 0.05;
         let currentHeight = sinX + sinZ;
 
-        // Distance from circle centers
+        // Flatten circles
         const dxA = circleA.centerX - x;
         const dzA = circleA.centerZ - z;
         const distanceFromCircleA = Math.sqrt(dxA * dxA + dzA * dzA);
@@ -177,32 +204,23 @@ class World {
         const dzB = circleB.centerZ - z;
         const distanceFromCircleB = Math.sqrt(dxB * dxB + dzB * dzB);
 
-        const insideCircleA = distanceFromCircleA <= circleA.radius;
-        const insideCircleB = distanceFromCircleB <= circleB.radius;
-
-        // Flatten circles
-        if (insideCircleA || insideCircleB) {
-          currentHeight = circleHeight;
+        if (
+          distanceFromCircleA <= circleA.radius ||
+          distanceFromCircleB <= circleB.radius
+        ) {
+          currentHeight = roadFlattenHeight;
         } else {
-          // Flatten road connecting the two circles (only outside circles)
-          const lineDX = circleB.centerX - circleA.centerX;
-          const lineDZ = circleB.centerZ - circleA.centerZ;
-          const lineLengthSquared = lineDX * lineDX + lineDZ * lineDZ;
-
-          // Project point (x,z) onto line AB
-          const t =
-            ((x - circleA.centerX) * lineDX + (z - circleA.centerZ) * lineDZ) /
-            lineLengthSquared;
-
-          if (t >= 0 && t <= 1) {
-            // Distance from point to line
-            const perpDist =
-              Math.abs(
-                lineDZ * (x - circleA.centerX) - lineDX * (z - circleA.centerZ)
-              ) / Math.sqrt(lineLengthSquared);
-            if (perpDist <= roadWidth / 2) {
-              currentHeight = roadFlattenHeight;
-            }
+          // Flatten along Bezier road
+          const point = new Vector3(x, 0, z);
+          const distToRoad = distanceToBezier(
+            point,
+            roadP0,
+            roadP1,
+            roadP2,
+            roadP3
+          );
+          if (distToRoad <= roadWidth / 2) {
+            currentHeight = roadFlattenHeight;
           }
         }
 
