@@ -28,8 +28,10 @@ let server;
 
 if (process.env.ENVIRONMENT == "PROD") {
   const options = {
-    key: readFileSync("/etc/letsencrypt/live/kevinklatt.de/privkey.pem"),
-    cert: readFileSync("/etc/letsencrypt/live/kevinklatt.de/fullchain.pem"),
+    key: readFileSync("/etc/letsencrypt/live/server.kubegame.com/privkey.pem"),
+    cert: readFileSync(
+      "/etc/letsencrypt/live/server.kubegame.com/fullchain.pem"
+    ),
   } as any;
   server = https.createServer(options, app);
 } else {
