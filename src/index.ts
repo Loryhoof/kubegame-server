@@ -14,6 +14,10 @@ import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 import { config } from "dotenv";
 
+type ChatMessage = { id: string; text: string };
+
+const serverChatMessages: ChatMessage[] = [];
+
 config();
 const app = express();
 
@@ -78,10 +82,23 @@ async function init() {
         terrains: terrains,
       });
 
+      socket.emit("init-chat", { messages: serverChatMessages });
+
       world.addPlayer(socket.id);
     });
 
-    socket.on("send-chat-message", (e) => {
+    socket.on("send-chat-message", (e: ChatMessage) => {
+      const MESSAGE_CHAR_LIMIT = 500;
+
+      if (!e.id || !e.text) return;
+      if (
+        e.id.length == 0 ||
+        e.text.length == 0 ||
+        e.text.length > MESSAGE_CHAR_LIMIT
+      )
+        return;
+
+      serverChatMessages.push(e);
       socket.broadcast.emit("chat-message", e);
     });
 
