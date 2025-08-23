@@ -101,7 +101,7 @@ class NPC {
   }
 
   update(delta: number) {
-    this.updateAI(delta);
+    // this.updateAI(delta);
     // if (this.controlledObject) {
     //   this.isSitting = true;
     //   this.physicsObject.rigidBody.sleep();
@@ -170,7 +170,6 @@ class NPC {
   }
 
   damage(amount: number) {
-    console.log(this.health);
     this.health -= amount;
   }
 
