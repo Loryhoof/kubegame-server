@@ -70,14 +70,14 @@ class World {
     // this.entities.push(ground);
     // car test
 
-    const npc = new NPC(
-      this,
-      new Vector3(0, 5, 0),
-      new Quaternion(),
-      randomHex()
-    );
+    // const npc = new NPC(
+    //   this,
+    //   new Vector3(0, 5, 0),
+    //   new Quaternion(),
+    //   randomHex()
+    // );
 
-    this.npcs.push(npc);
+    // this.npcs.push(npc);
 
     const ramp = new Trimesh(
       new Vector3(40, -0.5, 10),
