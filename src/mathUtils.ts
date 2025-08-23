@@ -27,6 +27,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function randomFromArray<T>(arr: T[]): T {
+  const randomIndex = Math.floor(Math.random() * arr.length);
+  return arr[randomIndex];
+}
+
 function getYRotationQuaternion(q: Quaternion): Quaternion {
   // Convert quaternion to Euler angles (yaw, pitch, roll)
   // Then rebuild a quaternion with only yaw
@@ -255,4 +260,5 @@ export {
   distanceToBezier,
   cubicBezierPoint,
   worldToGrid,
+  randomFromArray,
 };

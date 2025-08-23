@@ -21,6 +21,7 @@ import { createNoise2D } from "simplex-noise";
 import path from "path";
 import { readdir, readdirSync, readFileSync } from "fs";
 import Trimesh from "./Shapes/Trimesh";
+import NPC from "./NPC";
 
 const zoneSpawnLimit: number = 10;
 
@@ -44,6 +45,7 @@ class World {
   private interactables: Interactable[] = [];
   private vehicles: Vehicle[] = [];
   private terrains: TerrainData[] = [];
+  private npcs: NPC[] = [];
 
   private objectMap: Map<string, ObjectMapType>;
 
@@ -67,6 +69,15 @@ class World {
     // );
     // this.entities.push(ground);
     // car test
+
+    const npc = new NPC(
+      this,
+      new Vector3(0, 5, 0),
+      new Quaternion(),
+      randomHex()
+    );
+
+    this.npcs.push(npc);
 
     const ramp = new Trimesh(
       new Vector3(40, -0.5, 10),
@@ -412,6 +423,10 @@ class World {
       // }
     }
 
+    this.npcs.forEach((npc) => {
+      npc.update(delta);
+    });
+
     this.vehicles.forEach((vehicle) => {
       vehicle.update(delta);
     });
@@ -486,10 +501,11 @@ class World {
       // })),
       vehicles: this.vehicles,
       terrains: this.terrains,
+      npcs: this.npcs,
     };
   }
 
-  getPlayerFromCollider(col: RAPIER.Collider): Player | null {
+  getPlayerFromCollider(col: RAPIER.Collider): Player | NPC | null {
     for (const [key, player] of this.players) {
       const { collider } = player.physicsObject;
 
@@ -497,6 +513,12 @@ class World {
         return player;
       }
     }
+
+    const npc = this.npcs.find(
+      (npc) => npc.physicsObject.collider.handle == col.handle
+    );
+
+    if (npc) return npc;
 
     return null;
   }
@@ -540,6 +562,8 @@ class World {
   }
   removePlayer(networkId: string) {
     const player = this.players.get(networkId);
+
+    console.log("REMVOING PLAYER", player);
 
     if (!player) return;
 

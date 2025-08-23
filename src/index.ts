@@ -13,6 +13,7 @@ import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 import { config } from "dotenv";
+import NPC from "./NPC";
 
 type ChatMessage = { id: string; text: string };
 
@@ -68,7 +69,8 @@ async function init() {
     socket.on("readyForWorld", () => {
       readyPlayers.add(socket.id);
 
-      const { entities, interactables, vehicles, terrains } = world.getState();
+      const { entities, interactables, vehicles, terrains, npcs } =
+        world.getState();
       socket.emit("initWorld", {
         entities,
         interactables,
@@ -84,6 +86,20 @@ async function init() {
           })),
         })),
         terrains: terrains,
+        npcs: npcs.map((npc: NPC) => ({
+          velocity: npc.velocity,
+          health: npc.health,
+          coins: npc.coins,
+          id: npc.id,
+          position: npc.position,
+          quaternion: npc.quaternion,
+          color: npc.color,
+          keys: npc.keys,
+          isSitting: npc.isSitting,
+          // controlledObject: npc.controlledObject
+          //   ? { id: npc.controlledObject.id }
+          //   : null,
+        })),
       });
 
       socket.emit("init-chat", { messages: serverChatMessages });
@@ -277,7 +293,9 @@ async function init() {
           );
 
           if (hit && hit.hit && hit.hit.collider) {
+            console.log("some col");
             const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
+            console.log(hitPlayer, "hitpla  ");
             if (hitPlayer) hitPlayer.damage(25);
 
             io.emit("user_action", {
@@ -322,7 +340,7 @@ async function init() {
     world.update(delta);
     if (physicsManager.isReady()) physicsManager.update(elapsedTime, delta);
 
-    const { players, vehicles } = world.getState();
+    const { players, vehicles, npcs } = world.getState();
 
     type PlayerData = {
       velocity: Vector3;
@@ -367,6 +385,20 @@ async function init() {
           quaternion: wheel.quaternion,
           worldPosition: wheel.worldPosition,
         })),
+      })),
+      npcs: npcs.map((npc: NPC) => ({
+        velocity: npc.velocity,
+        health: npc.health,
+        coins: npc.coins,
+        id: npc.id,
+        position: npc.position,
+        quaternion: npc.quaternion,
+        color: npc.color,
+        keys: npc.keys,
+        isSitting: npc.isSitting,
+        // controlledObject: npc.controlledObject
+        //   ? { id: npc.controlledObject.id }
+        //   : null,
       })),
     };
 
