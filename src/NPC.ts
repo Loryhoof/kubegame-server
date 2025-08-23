@@ -91,8 +91,6 @@ class NPC {
 
       this.velocity.copy(dir.multiplyScalar(MOVEMENT_SPEED * speedFactor));
 
-      console.log(this.velocity.length());
-
       const angle = Math.atan2(dir.x, dir.z) + Math.PI;
       const lookQuat = new Quaternion().setFromAxisAngle(
         new Vector3(0, 1, 0),
