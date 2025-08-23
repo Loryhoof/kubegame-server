@@ -18,6 +18,9 @@ import Pickup from "./Entities/Pickup";
 import Vehicle from "./Vehicle/Vehicle";
 
 import { createNoise2D } from "simplex-noise";
+import path from "path";
+import { readdir, readdirSync, readFileSync } from "fs";
+import Trimesh from "./Shapes/Trimesh";
 
 const zoneSpawnLimit: number = 10;
 
@@ -30,6 +33,8 @@ export type TerrainData = {
   scale: Vector3;
 };
 
+type ObjectMapType = { vertices: any; indices: any };
+
 class World {
   private io: Server;
   private players: Map<string, Player> = new Map();
@@ -40,20 +45,62 @@ class World {
   private vehicles: Vehicle[] = [];
   private terrains: TerrainData[] = [];
 
+  private objectMap: Map<string, ObjectMapType>;
+
   constructor(io: Server) {
+    this.objectMap = this.readObjects();
     this.io = io;
     this.init();
   }
   init() {
     const physics = PhysicsManager.getInstance();
 
-    // ground
-    // physics.createFixedBox(
-    //   new Vector3(0, -0.5, 0),
-    //   new Vector3(5000, 0.1, 5000)
-    // );
+    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(500, 0.1, 500));
 
+    // const ground = new Box(
+    //   500,
+    //   0.1,
+    //   500,
+    //   new Vector3(0, -0.5, 0),
+    //   new Quaternion(),
+    //   "#ff0000"
+    // );
+    // this.entities.push(ground);
     // car test
+
+    const ramp = new Trimesh(
+      new Vector3(40, -0.5, 10),
+      new Quaternion(),
+      this.objectMap.get("ramp")?.vertices,
+      this.objectMap.get("ramp")?.indices,
+      "ramp"
+    );
+
+    const ramp2 = new Trimesh(
+      new Vector3(80, -0.5, 10),
+      new Quaternion(),
+      this.objectMap.get("ramp")?.vertices,
+      this.objectMap.get("ramp")?.indices,
+      "ramp"
+    );
+
+    const ramp3 = new Trimesh(
+      new Vector3(40, -0.5, 80),
+      new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+      this.objectMap.get("ramp")?.vertices,
+      this.objectMap.get("ramp")?.indices,
+      "ramp"
+    );
+
+    const ramp4 = new Trimesh(
+      new Vector3(80, -0.5, 80),
+      new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+      this.objectMap.get("ramp")?.vertices,
+      this.objectMap.get("ramp")?.indices,
+      "ramp"
+    );
+
+    this.entities.push(ramp, ramp2, ramp3, ramp4);
 
     const car = new Vehicle(this, new Vector3(-20, 10, 10));
     this.vehicles.push(car);
@@ -61,16 +108,15 @@ class World {
     const car2 = new Vehicle(this, new Vector3(-20, 5, 20));
     this.vehicles.push(car2);
 
-    const brige = new Box(
-      6,
-      0.75,
-      33,
-      new Vector3(62, 0, 28),
-      new Quaternion().setFromEuler(0, Math.PI / 2, 0),
-      "#383838"
-    );
-    this.entities.push(brige);
-
+    // const brige = new Box(
+    //   6,
+    //   0.75,
+    //   33,
+    //   new Vector3(62, 0, 28),
+    //   new Quaternion().setFromEuler(0, Math.PI / 2, 0),
+    //   "#383838"
+    // );
+    // this.entities.push(brige);
     // const bridge = new THREE.Mesh(
     //   new THREE.BoxGeometry(6, 0.5, 30),
     //   new THREE.MeshStandardMaterial({ color: 0x383838 })
@@ -116,7 +162,7 @@ class World {
     //   "#0000ff"
     // );
 
-    this.createTerrain();
+    //this.createTerrain();
 
     setInterval(() => {
       if (this.interactables.length >= 10) return;
@@ -160,6 +206,39 @@ class World {
     //   this.zones.push(tz);
     //   this.io.emit("zoneCreated", tz);
     // }, 20000);
+  }
+  readObjects() {
+    const dirPath = path.join(process.cwd(), "src/Objects");
+    const fileMap = new Map();
+
+    try {
+      const files = readdirSync(dirPath).filter((f) => f.endsWith(".json"));
+
+      files.forEach((file) => {
+        const filePath = path.join(dirPath, file);
+
+        try {
+          const data = readFileSync(filePath, "utf-8");
+          const json = JSON.parse(data);
+
+          const key = path.basename(file, ".json");
+
+          const object = {
+            vertices: new Float32Array(Object.values(json.vertices)),
+            indices: new Uint16Array(Object.values(json.indices)),
+          };
+
+          fileMap.set(key, object);
+        } catch (err: any) {
+          console.error(`❌ Failed to read/parse ${file}:`, err.message);
+        }
+      });
+    } catch (err: any) {
+      console.error("❌ Error reading directory:", err.message);
+    }
+
+    console.log("✅ Loaded objects:", Array.from(fileMap.keys()));
+    return fileMap;
   }
   createTerrain() {
     const nrows = 200;
@@ -385,6 +464,8 @@ class World {
         color: entity.color,
         position: entity.position,
         quaternion: entity.quaternion,
+        type: entity.type,
+        modelName: entity.modelName,
       })),
 
       interactables: this.interactables.map((entity) => ({

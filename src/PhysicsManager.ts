@@ -138,6 +138,29 @@ export default class PhysicsManager {
     return { rigidBody, collider };
   }
 
+  createTrimesh(
+    position: Vector3,
+    rotation: Quaternion,
+    vertices: Float32Array,
+    indices: Uint32Array
+  ) {
+    const rbDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(position.x, position.y, position.z)
+      .setRotation({
+        w: rotation.w,
+        x: rotation.x,
+        y: rotation.y,
+        z: rotation.z,
+      });
+    const rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+
+    const colDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+
+    const collider = this.physicsWorld.createCollider(colDesc, rigidBody);
+
+    return { rigidBody, collider };
+  }
+
   createPlayerCapsule(): PhysicsObject {
     let rbDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(0, 5, 0)

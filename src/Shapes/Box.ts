@@ -1,7 +1,8 @@
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
+import WorldShape, { WorldShapeType } from "./WorldShape";
 
-export default class Box {
+export default class Box implements WorldShape {
   public id: string;
   public width: number;
   public height: number;
@@ -10,6 +11,8 @@ export default class Box {
   public quaternion: Quaternion;
   public color: string;
   public physicsObject: PhysicsObject;
+
+  public readonly type: WorldShapeType = "box";
 
   constructor(
     width: number,

@@ -122,6 +122,42 @@ async function init() {
       quaternion: [number, number, number, number];
     };
 
+    type RegisterObjectType = {
+      position: Vector3;
+      quaternion: Quaternion;
+      vertices: any[];
+      indices: any[];
+      scale: Vector3;
+    };
+    // socket.on("register-object", (e: RegisterObjectType) => {
+    //   const aligned = new Uint8Array(e.vertices).buffer;
+    //   const vertices = new Float32Array(aligned);
+
+    //   const aligned2 = new Uint8Array(e.indices).buffer;
+    //   const indices = new Uint16Array(aligned2);
+    //   const uint32 = new Uint32Array(indices);
+
+    //   // writeFile(
+    //   //   "WorldFiles/lala.json",
+    //   //   JSON.stringify({
+    //   //     vertices: vertices,
+    //   //     indices: indices,
+    //   //   }),
+    //   //   (err) => {
+    //   //     if (err) {
+    //   //       console.log("we got rror)");
+    //   //     }
+    //   //   }
+    //   // );
+
+    //   PhysicsManager.getInstance().createTrimesh(
+    //     e.position,
+    //     e.quaternion,
+    //     vertices,
+    //     uint32
+    //   );
+    // });
+
     socket.on("pingCheck", (startTime) => {
       socket.emit("pongCheck", startTime);
     });
