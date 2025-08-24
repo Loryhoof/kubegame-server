@@ -124,6 +124,10 @@ class NPC {
     //   this.isSitting = false;
     // }
 
+    if (this.position.y <= -100) {
+      this.teleportTo(new Vector3(0, 5, 0));
+    }
+
     if (this.health <= 0) {
       this.health = 100;
       this.teleportTo(new Vector3(0, 5, 0));
