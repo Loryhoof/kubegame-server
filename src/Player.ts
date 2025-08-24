@@ -4,6 +4,12 @@ import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
 import { Quaternion } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
 
+export type InputSeq = {
+  seq: number;
+  keys: any;
+  dt: number;
+};
+
 class Player {
   public id: string;
   public position: Vector3;
@@ -37,6 +43,8 @@ class Player {
   public keys: Record<string, boolean> = {};
 
   public isSitting: boolean = false;
+
+  public lastProcessedInputSeq: number = 0;
 
   constructor(
     id: string,

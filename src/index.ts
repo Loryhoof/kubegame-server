@@ -147,6 +147,8 @@ async function init() {
         mouseLeft: boolean;
         mouseRight: boolean;
       };
+      seq: number;
+      dt: number;
       quaternion: [number, number, number, number];
     };
 
@@ -196,6 +198,8 @@ async function init() {
       const { players, vehicles } = world.getState();
       const player = players.get(socket.id);
       if (!player) return;
+
+      player.lastProcessedInputSeq = data.seq;
 
       let inputDir: Vector3 = new Vector3();
 
@@ -400,6 +404,7 @@ async function init() {
       keys: any;
       isSitting: boolean;
       controlledObject: { id: string } | null;
+      lastProcessedInputSeq: number;
     };
 
     const transformedPlayers: Record<string, PlayerData> = {};
@@ -417,6 +422,7 @@ async function init() {
         controlledObject: player.controlledObject
           ? { id: player.controlledObject.id }
           : null,
+        lastProcessedInputSeq: player.lastProcessedInputSeq,
       };
     }
 
