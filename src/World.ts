@@ -345,9 +345,9 @@ class World {
     );
   }
 
-  update(delta: number) {
+  fixedUpdate(delta: number) {
     for (const [key, player] of this.players) {
-      player.update();
+      player.update(delta);
 
       if (player.health <= 0) {
         // player.setPosition(new Vector3(0, 0, 0));
@@ -364,71 +364,14 @@ class World {
       if (player.wantsToInteract) {
         this.scanInteractables(player);
       }
-
-      // estimate pos
-
-      //const playerHalfSize = { x: 0.5, y: 0.5, z: 0.5 };
-      //let allowMove = true;
-
-      // this.colliders.forEach((collider) => {
-      //   let fakePosition = {
-      //     x: player.position.x,
-      //     y: player.position.y,
-      //     z: player.position.z,
-      //   };
-      //   fakePosition.x += player.velocity.x * speedFactor;
-      //   fakePosition.z += player.velocity.z * speedFactor;
-      //   if (collider.contains(fakePosition, playerHalfSize)) allowMove = false;
-      // });
-
-      // if (allowMove) {
-      //   //player.position.x += player.velocity.x * speedFactor;
-      //   //player.position.z += player.velocity.z * speedFactor;
-      // }
-
-      //player.move(player.velocity);
-
-      //const newPos = player.getTranslation();
-      //if (newPos) player.setPosition({ x: newPos.x, y: newPos.y, z: newPos.z });
-
-      // this.zones.forEach((zone) => {
-      //   if (zone.contains(player)) {
-      //     zone.trigger(player);
-      //   }
-      // });
-
-      //       function checkPlayerInteractables(player: ClientPlayer) {
-      //   let closestInteractable = null;
-      //   let minDist = Infinity;
-
-      //   type InteractableType = { id: string; mesh: THREE.Mesh };
-
-      //   const interactables = world.interactables as InteractableType[];
-
-      //   for (const interactable of interactables) {
-      //     const dist = player.getPosition().distanceTo(interactable.mesh.position);
-      //     if (dist < minDist) {
-      //       minDist = dist;
-      //       closestInteractable = interactable;
-      //     }
-      //   }
-
-      //   // console.log(closestInteractable, minDist);
-
-      //   if (minDist <= 1.5) {
-      //     wantsToInteract = true;
-      //   } else {
-      //     wantsToInteract = false;
-      //   }
-      // }
     }
-
-    this.npcs.forEach((npc) => {
-      npc.update(delta);
-    });
-
     this.vehicles.forEach((vehicle) => {
       vehicle.update(delta);
+    });
+  }
+  update(delta: number) {
+    this.npcs.forEach((npc) => {
+      npc.update(delta);
     });
 
     // this.entities.forEach((entity) => {

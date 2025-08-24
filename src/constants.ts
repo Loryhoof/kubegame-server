@@ -1,5 +1,5 @@
 export const speedFactor = 0.05;
-export const serverHz = 90;
+export const serverHz = 30;
 
 export const Rad2Deg = 180 / Math.PI;
 

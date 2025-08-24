@@ -52,7 +52,7 @@ class Player {
     this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
   }
 
-  update() {
+  update(delta: number) {
     if (this.controlledObject) {
       this.isSitting = true;
       this.physicsObject.rigidBody.sleep();
@@ -83,7 +83,7 @@ class Player {
       this.grounded = false;
     }
 
-    const displacement = this.velocity.clone().multiplyScalar(0.03 * 20);
+    const displacement = this.velocity.clone().multiplyScalar(delta);
 
     // Preserve current vertical velocity from physics
     const linVel = this.physicsObject.rigidBody.linvel();

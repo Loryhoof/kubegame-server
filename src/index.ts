@@ -50,6 +50,9 @@ const io = new Server(server, {
   },
 });
 
+let tickIndex = 0;
+let physicsTickIndex = 0;
+
 const physicsManager = PhysicsManager.getInstance();
 const readyPlayers = new Set<string>(); // track players that called readyForWorld
 
@@ -60,10 +63,19 @@ async function init() {
 
   const world = new World(io);
 
+  startPhysicsLoop(world);
+
   io.on("connection", (socket) => {
     console.log("connected!", socket.id);
 
     socket.broadcast.emit("addPlayer", socket.id);
+
+    socket.on("syncTime", (clientSent) => {
+      socket.emit("syncTimeResponse", {
+        clientSent,
+        serverNow: Date.now(),
+      });
+    });
 
     // Player marks themselves as ready
     socket.on("readyForWorld", () => {
@@ -263,8 +275,10 @@ async function init() {
         // }
 
         let sprintFactor = data.keys.shift ? 2 : 1;
-        player.velocity.x = worldDir.x * sprintFactor * 5;
-        player.velocity.z = worldDir.z * sprintFactor * 5;
+
+        const BASE_SPEED = 200;
+        player.velocity.x = worldDir.x * sprintFactor * BASE_SPEED;
+        player.velocity.z = worldDir.z * sprintFactor * BASE_SPEED;
       } else {
         player.velocity.x = 0;
         player.velocity.z = 0;
@@ -293,9 +307,7 @@ async function init() {
           );
 
           if (hit && hit.hit && hit.hit.collider) {
-            console.log("some col");
             const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
-            console.log(hitPlayer, "hitpla  ");
             if (hitPlayer) hitPlayer.damage(25);
 
             io.emit("user_action", {
@@ -329,16 +341,49 @@ async function init() {
     });
   });
 
+  function startPhysicsLoop(world: World) {
+    const PHYSICS_HZ = 60;
+    const PHYSICS_STEP = 1 / PHYSICS_HZ;
+    let accumulator = 0;
+    let lastTime = Date.now();
+
+    function loop() {
+      const now = Date.now();
+      let frameTime = (now - lastTime) / 1000;
+      if (frameTime > 0.25) frameTime = 0.25; // safety clamp
+      lastTime = now;
+
+      accumulator += frameTime;
+      while (accumulator >= PHYSICS_STEP) {
+        physicsManager.update();
+        world.fixedUpdate(PHYSICS_STEP);
+        accumulator -= PHYSICS_STEP;
+        physicsTickIndex++;
+      }
+      setImmediate(loop);
+    }
+
+    loop();
+  }
+
   // update loop
   function tick() {
     const now = Date.now();
     const delta = (now - lastTime) / 1000;
     lastTime = now;
 
+    tickIndex++;
+
+    // accumulator += delta;
+
     const elapsedTime = (now - startTime) / 1000; // seconds since init
 
+    // while (accumulator >= FIXED_STEP) {
+    //   physicsManager.update();
+    //   accumulator -= FIXED_STEP;
+    // }
+
     world.update(delta);
-    if (physicsManager.isReady()) physicsManager.update(elapsedTime, delta);
 
     const { players, vehicles, npcs } = world.getState();
 
@@ -407,6 +452,7 @@ async function init() {
       const socket = io.sockets.sockets.get(id);
       if (socket) {
         socket.emit("updateData", {
+          time: Date.now(),
           world: worldData,
           players: transformedPlayers,
         });

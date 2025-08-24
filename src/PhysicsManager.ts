@@ -360,10 +360,10 @@ export default class PhysicsManager {
     rigidBody.setLinvel(velocity, true);
   }
 
-  update(elapsedTime: number, deltaTime: number) {
+  update() {
     if (!this.physicsIsReady) {
       return;
     }
-    this.physicsWorld.step();
+    (this.physicsWorld as RAPIER.World).step();
   }
 }
