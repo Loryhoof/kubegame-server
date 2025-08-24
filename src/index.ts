@@ -259,15 +259,17 @@ async function init() {
         const worldDir = applyQuaternion(inputDir, yawQuat);
         const yaw = Math.atan2(-worldDir.x, -worldDir.z);
 
-        if (data.keys.mouseRight) {
-          player.quaternion = yawQuat;
-        } else {
-          player.quaternion = new Quaternion(
-            0,
-            Math.sin(yaw / 2),
-            0,
-            Math.cos(yaw / 2)
-          );
+        if (!player.controlledObject) {
+          if (data.keys.mouseRight) {
+            player.quaternion = yawQuat;
+          } else {
+            player.quaternion = new Quaternion(
+              0,
+              Math.sin(yaw / 2),
+              0,
+              Math.cos(yaw / 2)
+            );
+          }
         }
 
         // if(player.controlledObject) {
