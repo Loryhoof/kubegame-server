@@ -167,7 +167,7 @@ class Player {
     if (canJump) {
       this.lastJumpTime = now;
       this.isJumping = true;
-      this.physicsObject.rigidBody.applyImpulse({ x: 0, y: 1.5, z: 0 }, true);
+      this.physicsObject.rigidBody.applyImpulse({ x: 0, y: 0.8, z: 0 }, true);
     }
   }
 }

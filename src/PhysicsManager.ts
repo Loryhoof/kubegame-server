@@ -35,7 +35,7 @@ export default class PhysicsManager {
     await RAPIER.init();
     this.physicsIsReady = true;
 
-    this.gravity = new RAPIER.Vector3(0.0, -30, 0.0); // - 9.81
+    this.gravity = new RAPIER.Vector3(0.0, -9.81, 0.0); // - 9.81
     this.physicsWorld = new RAPIER.World(this.gravity);
 
     console.log("Rapier physics initialized");
