@@ -149,7 +149,7 @@ async function init() {
       };
       seq: number;
       dt: number;
-      quaternion: [number, number, number, number];
+      camQuat: [number, number, number, number];
     };
 
     type RegisterObjectType = {
@@ -253,10 +253,10 @@ async function init() {
         inputDir.z /= length;
 
         const cameraQuat = new Quaternion(
-          data.quaternion[0],
-          data.quaternion[1],
-          data.quaternion[2],
-          data.quaternion[3]
+          data.camQuat[0],
+          data.camQuat[1],
+          data.camQuat[2],
+          data.camQuat[3]
         );
 
         const yawQuat = getYawQuaternion(cameraQuat);
