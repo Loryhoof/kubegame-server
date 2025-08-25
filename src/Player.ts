@@ -91,20 +91,19 @@ class Player {
       this.grounded = false;
     }
 
-    const displacement = this.velocity.clone().multiplyScalar(delta);
+    //const displacement = this.velocity.clone().multiplyScalar(delta);
 
-    // Preserve current vertical velocity from physics
-    const linVel = this.physicsObject.rigidBody.linvel();
-    displacement.y = linVel.y;
+    const rb = this.physicsObject.rigidBody;
+
+    const current = rb.linvel();
+
+    const desired = { x: this.velocity.x, y: current.y, z: this.velocity.z };
 
     // Apply movement
-    PhysicsManager.getInstance().setLinearVelocity(
-      this.physicsObject.rigidBody,
-      displacement
-    );
+    PhysicsManager.getInstance().setLinearVelocity(rb, desired);
 
     // Sync position
-    this.setPosition(this.physicsObject.rigidBody.translation() as Vector3);
+    this.setPosition(rb.translation() as Vector3);
 
     // Reset jump state when on ground
     if (this.grounded) {

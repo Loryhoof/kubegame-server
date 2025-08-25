@@ -282,7 +282,7 @@ async function init() {
 
         let sprintFactor = data.keys.shift ? 2 : 1;
 
-        const BASE_SPEED = 200;
+        const BASE_SPEED = 4;
         player.velocity.x = worldDir.x * sprintFactor * BASE_SPEED;
         player.velocity.z = worldDir.z * sprintFactor * BASE_SPEED;
       } else {
