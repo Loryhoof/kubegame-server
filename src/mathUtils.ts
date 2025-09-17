@@ -122,6 +122,16 @@ function getYawQuaternion(q: Quaternion): Quaternion {
   return new Quaternion(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2));
 }
 
+function extractYaw(q: Quaternion): Quaternion {
+  // Convert quaternion → Euler
+  const siny_cosp = 2 * (q.w * q.y + q.x * q.z);
+  const cosy_cosp = 1 - 2 * (q.y * q.y + q.x * q.x);
+  const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+  // Return quaternion with only yaw
+  return new Quaternion(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2));
+}
+
 function eulerToQuaternion(pitch: number, yaw: number, roll: number) {
   const cy = Math.cos(yaw * 0.5);
   const sy = Math.sin(yaw * 0.5);
@@ -261,4 +271,5 @@ export {
   cubicBezierPoint,
   worldToGrid,
   randomFromArray,
+  extractYaw,
 };

@@ -4,6 +4,7 @@ import http from "http";
 import https from "https";
 import {
   applyQuaternion,
+  extractYaw,
   getYawQuaternion,
   Quaternion,
   Vector3,
@@ -259,7 +260,7 @@ async function init() {
           data.camQuat[3]
         );
 
-        const yawQuat = getYawQuaternion(cameraQuat);
+        const yawQuat = extractYaw(cameraQuat);
         const worldDir = applyQuaternion(inputDir, yawQuat);
         const yaw = Math.atan2(-worldDir.x, -worldDir.z);
 
