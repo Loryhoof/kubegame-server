@@ -18,6 +18,20 @@ import NPC from "./NPC";
 
 type ChatMessage = { id: string; text: string };
 
+type PlayerData = {
+  velocity: Vector3;
+  health: number;
+  coins: number;
+  id: string;
+  position: Vector3;
+  quaternion: Quaternion;
+  color: string;
+  keys: any;
+  isSitting: boolean;
+  controlledObject: { id: string } | null;
+  lastProcessedInputSeq: number;
+};
+
 const serverChatMessages: ChatMessage[] = [];
 
 config();
@@ -82,8 +96,31 @@ async function init() {
     socket.on("readyForWorld", () => {
       readyPlayers.add(socket.id);
 
-      const { entities, interactables, vehicles, terrains, npcs } =
+      const { entities, interactables, vehicles, terrains, npcs, players } =
         world.getState();
+
+      const transformedPlayers: Record<string, PlayerData> = {};
+      for (const [id, player] of players.entries()) {
+        // dont add own player
+        if (id == socket.id) continue;
+
+        transformedPlayers[id] = {
+          velocity: player.velocity,
+          health: player.health,
+          coins: player.coins,
+          id: player.id,
+          position: player.position,
+          quaternion: player.quaternion,
+          color: player.color,
+          keys: player.keys,
+          isSitting: player.isSitting,
+          controlledObject: player.controlledObject
+            ? { id: player.controlledObject.id }
+            : null,
+          lastProcessedInputSeq: player.lastProcessedInputSeq,
+        };
+      }
+
       socket.emit("initWorld", {
         entities,
         interactables,
@@ -113,6 +150,7 @@ async function init() {
           //   ? { id: npc.controlledObject.id }
           //   : null,
         })),
+        players: transformedPlayers,
       });
 
       socket.emit("init-chat", { messages: serverChatMessages });
@@ -393,20 +431,6 @@ async function init() {
     world.update(delta);
 
     const { players, vehicles, npcs } = world.getState();
-
-    type PlayerData = {
-      velocity: Vector3;
-      health: number;
-      coins: number;
-      id: string;
-      position: Vector3;
-      quaternion: Quaternion;
-      color: string;
-      keys: any;
-      isSitting: boolean;
-      controlledObject: { id: string } | null;
-      lastProcessedInputSeq: number;
-    };
 
     const transformedPlayers: Record<string, PlayerData> = {};
     for (const [id, player] of players.entries()) {
