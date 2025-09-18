@@ -61,24 +61,31 @@ class Player {
   }
 
   update(delta: number) {
+    // if (this.controlledObject) {
+    //   this.isSitting = true;
+    //   this.physicsObject.rigidBody.sleep();
+    //   // this.setPosition(
+    //   //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
+    //   // );
+
+    //   const seatPos = this.controlledObject.getSeatPosition(this);
+    //   this.setPosition(seatPos);
+
+    //   // please fix this.. we do opposite quaternion which i feel like is bad at runtime
+    //   const oppositeQuat = new Quaternion();
+    //   oppositeQuat.setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+
+    //   this.setQuaternion(
+    //     this.controlledObject.quaternion.clone().multiply(oppositeQuat)
+    //   );
+    //   return;
+    // } else {
+    //   this.isSitting = false;
+    // }
+
     if (this.controlledObject) {
       this.isSitting = true;
       this.physicsObject.rigidBody.sleep();
-      // this.setPosition(
-      //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
-      // );
-
-      const seatPos = this.controlledObject.getSeatPosition(this);
-      this.setPosition(seatPos);
-
-      // please fix this.. we do opposite quaternion which i feel like is bad at runtime
-      const oppositeQuat = new Quaternion();
-      oppositeQuat.setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
-
-      this.setQuaternion(
-        this.controlledObject.quaternion.clone().multiply(oppositeQuat)
-      );
-      return;
     } else {
       this.isSitting = false;
     }

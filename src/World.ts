@@ -480,6 +480,11 @@ class World {
         quaternion: wheel.quaternion,
         worldPosition: wheel.worldPosition,
       })),
+      seats: car.seats.map((seat) => ({
+        position: seat.position,
+        type: seat.type,
+        seater: seat.seater ? seat.seater.id : null,
+      })),
     };
 
     this.io.emit("addVehicle", data);

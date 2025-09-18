@@ -31,7 +31,7 @@ export default class Vehicle {
 
   private steerSpeed: number = 2;
 
-  private seats: Seat[] = [];
+  public seats: Seat[] = [];
 
   public lastTimeSinceOccupied: number;
 
@@ -39,6 +39,8 @@ export default class Vehicle {
 
   // sounds
   public hornPlaying: boolean = false;
+
+  public lastProcessedInputSeq: number = 0;
 
   constructor(world: World, position: Vector3) {
     this.world = world;

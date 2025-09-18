@@ -134,6 +134,14 @@ async function init() {
             quaternion: wheel.quaternion,
             worldPosition: wheel.worldPosition,
           })),
+          linearVelocity: vehicle.physicsObject.rigidBody.linvel(),
+          angularVelocity: vehicle.physicsObject.rigidBody.angvel(),
+          seats: vehicle.seats.map((seat) => ({
+            position: seat.position,
+            type: seat.type,
+            seater: seat.seater ? seat.seater.id : null,
+          })),
+          lastProcessedInputSeq: vehicle.lastProcessedInputSeq,
         })),
         terrains: terrains,
         npcs: npcs.map((npc: NPC) => ({
@@ -231,6 +239,28 @@ async function init() {
       socket.emit("pongCheck", startTime);
     });
 
+    socket.on("vehicleInput", (data: PlayerInput) => {
+      if (!readyPlayers.has(socket.id)) return; // ignore input if not ready
+
+      const { players } = world.getState();
+      const player = players.get(socket.id);
+      if (!player) return;
+
+      if (!player.controlledObject) return;
+
+      const vehicle = player.controlledObject;
+
+      vehicle.lastProcessedInputSeq = data.seq;
+      player.keys = data.keys;
+
+      if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
+        player.lastInteractedTime = Date.now();
+
+        player.exitVehicle();
+        return;
+      }
+    });
+
     socket.on("playerInput", (data: PlayerInput) => {
       if (!readyPlayers.has(socket.id)) return; // ignore input if not ready
 
@@ -254,8 +284,6 @@ async function init() {
 
       if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
         player.lastInteractedTime = Date.now();
-
-        console.log("pressing e");
 
         if (player.controlledObject) {
           player.exitVehicle();
@@ -463,6 +491,14 @@ async function init() {
           quaternion: wheel.quaternion,
           worldPosition: wheel.worldPosition,
         })),
+        linearVelocity: vehicle.physicsObject.rigidBody.linvel(),
+        angularVelocity: vehicle.physicsObject.rigidBody.angvel(),
+        seats: vehicle.seats.map((seat) => ({
+          position: seat.position,
+          type: seat.type,
+          seater: seat.seater ? seat.seater.id : null,
+        })),
+        lastProcessedInputSeq: vehicle.lastProcessedInputSeq,
       })),
       npcs: npcs.map((npc: NPC) => ({
         velocity: npc.velocity,
