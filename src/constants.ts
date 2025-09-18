@@ -3,6 +3,8 @@ export const serverHz = 30;
 
 export const Rad2Deg = 180 / Math.PI;
 
+export const CAR_COIN_AMOUNT = 100;
+
 export function multiplyScalar(
   vector: { x: number; y: number; z: number },
   scalar: number

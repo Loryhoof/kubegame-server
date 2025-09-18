@@ -10,7 +10,7 @@ import {
   Vector3,
 } from "./mathUtils";
 import World from "./World";
-import { serverHz } from "./constants";
+import { CAR_COIN_AMOUNT, serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 import { config } from "dotenv";
@@ -30,6 +30,11 @@ type PlayerData = {
   isSitting: boolean;
   controlledObject: { id: string } | null;
   lastProcessedInputSeq: number;
+};
+
+type ServerNotification = {
+  type: "error" | "success" | "info";
+  content: string;
 };
 
 const serverChatMessages: ChatMessage[] = [];
@@ -297,10 +302,37 @@ async function init() {
         });
       }
 
-      if (data.keys.k && Date.now() - player.lastSpawnedCarTime >= 5000) {
+      if (data.keys.k && Date.now() - player.lastSpawnedCarTime >= 500) {
+        player.lastSpawnedCarTime = Date.now();
+
         if (player.controlledObject != null || player.isSitting) return;
 
-        player.lastSpawnedCarTime = Date.now();
+        // transact
+        if (player.coins < CAR_COIN_AMOUNT) {
+          const notification: ServerNotification = {
+            type: "error",
+            content: `Not enough coins. Car costs ${CAR_COIN_AMOUNT} coins`,
+          };
+          socket.emit("server-notification", notification);
+
+          if (player.coins == 0) {
+            const notification: ServerNotification = {
+              type: "info",
+              content: `Tip: Pick up the red boxes for coins`,
+            };
+            socket.emit("server-notification", notification);
+          }
+
+          return;
+        }
+
+        player.coins -= CAR_COIN_AMOUNT;
+
+        const notification: ServerNotification = {
+          type: "success",
+          content: `Purchased car for ${CAR_COIN_AMOUNT} coins`,
+        };
+        socket.emit("server-notification", notification);
 
         world.addVehicle(
           new Vector3(
