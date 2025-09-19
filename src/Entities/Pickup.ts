@@ -13,6 +13,8 @@ export default class Pickup implements Interactable {
 
   private active: boolean = true;
 
+  public usedBy: Player | null = null;
+
   public onRemove: () => void;
 
   constructor(
@@ -33,6 +35,8 @@ export default class Pickup implements Interactable {
 
   use(player: Player) {
     if (this.active) {
+      this.usedBy = player;
+
       this.active = false;
       player.give(this.item, this.amount);
       this.remove();

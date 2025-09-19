@@ -541,6 +541,7 @@ class World {
         type: "",
         item: "",
         amount: 0,
+        usedBy: "",
       },
     };
 
@@ -548,6 +549,7 @@ class World {
       payload.meta.type = "pickup";
       payload.meta.item = interactable.item;
       payload.meta.amount = interactable.amount;
+      payload.meta.usedBy = interactable.usedBy ? interactable.usedBy.id : "";
     }
 
     this.interactables = this.interactables.filter(
