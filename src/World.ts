@@ -530,10 +530,27 @@ class World {
   }
   removeInteractable(interactable: Interactable) {
     const uuid = interactable.id;
+
+    let payload = {
+      id: uuid,
+      meta: {
+        type: "",
+        item: "",
+        amount: 0,
+      },
+    };
+
+    if (interactable instanceof Pickup) {
+      payload.meta.type = "pickup";
+      payload.meta.item = interactable.item;
+      payload.meta.amount = interactable.amount;
+    }
+
     this.interactables = this.interactables.filter(
       (interactable) => interactable.id !== uuid
     );
-    this.io.emit("interactableRemoved", uuid);
+
+    this.io.emit("interactableRemoved", payload);
   }
 }
 

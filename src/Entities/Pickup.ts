@@ -5,8 +5,8 @@ import Player from "../Player";
 
 export default class Pickup implements Interactable {
   public id: string;
-  private item: string;
-  private amount: number;
+  public item: string;
+  public amount: number;
 
   public position: Vector3;
   public quaternion: Quaternion;
