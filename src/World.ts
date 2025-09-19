@@ -466,6 +466,10 @@ class World {
     return null;
   }
 
+  getPlayerById(id: string): Player | null {
+    return this.players.get(id) ?? null;
+  }
+
   addVehicle(position: Vector3, player?: Player) {
     const car = new Vehicle(this, position);
     this.vehicles.push(car);

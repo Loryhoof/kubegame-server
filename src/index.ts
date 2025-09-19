@@ -16,7 +16,7 @@ import { readFileSync } from "fs";
 import { config } from "dotenv";
 import NPC from "./NPC";
 
-type ChatMessage = { id: string; text: string };
+type ChatMessage = { id: string; nickname: string; text: string };
 
 type PlayerData = {
   velocity: Vector3;
@@ -30,6 +30,7 @@ type PlayerData = {
   isSitting: boolean;
   controlledObject: { id: string } | null;
   lastProcessedInputSeq: number;
+  nickname: string;
 };
 
 type ServerNotification = {
@@ -123,6 +124,7 @@ async function init() {
             ? { id: player.controlledObject.id }
             : null,
           lastProcessedInputSeq: player.lastProcessedInputSeq,
+          nickname: player.nickname ?? "",
         };
       }
 
@@ -182,8 +184,28 @@ async function init() {
       )
         return;
 
+      const p = world.getPlayerById(e.id);
+
+      if (p) {
+        e.nickname = p.nickname ?? "";
+        console.log(e, "E");
+      }
+
       serverChatMessages.push(e);
-      socket.broadcast.emit("chat-message", e);
+      io.emit("chat-message", e);
+    });
+
+    type CommandData = {
+      command: string;
+      value: string;
+    };
+
+    socket.on("user-command", (data: CommandData) => {
+      if (data.command == "change-nickname") {
+        if (data.value.length > 20) return;
+
+        world.getPlayerById(socket.id)?.setNickname(data.value);
+      }
     });
 
     type PlayerInput = {
@@ -508,6 +530,7 @@ async function init() {
           ? { id: player.controlledObject.id }
           : null,
         lastProcessedInputSeq: player.lastProcessedInputSeq,
+        nickname: player.nickname ?? "",
       };
     }
 

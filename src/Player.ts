@@ -46,6 +46,9 @@ class Player {
 
   public lastProcessedInputSeq: number = 0;
 
+  //
+  public nickname: string | null = null;
+
   constructor(
     id: string,
     position: Vector3,
@@ -58,6 +61,10 @@ class Player {
     this.color = color;
 
     this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
+  }
+
+  setNickname(n: string) {
+    this.nickname = n;
   }
 
   update(delta: number) {
