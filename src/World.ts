@@ -218,6 +218,16 @@ class World {
     //   this.io.emit("zoneCreated", tz);
     // }, 20000);
   }
+
+  registerHit(position: Vector3, hitPlayer: string | null = null) {
+    this.io.emit("register-hit", {
+      position: position,
+      hitPlayer: hitPlayer,
+    });
+  }
+  createHitmarker(position: Vector3) {
+    this.io.emit("create-hitmarker", { position: position });
+  }
   readObjects() {
     const dirPath = path.join(process.cwd(), "src/Objects");
     const fileMap = new Map();

@@ -329,20 +329,23 @@ export default class PhysicsManager {
     ray.origin = origin;
     ray.dir = dir;
 
-    let maxToi = toi;
-    let solid = false;
-
-    let hit = this.physicsWorld.castRay(
+    const hit = this.physicsWorld.castRay(
       ray,
-      maxToi,
-      solid,
+      toi,
+      false,
       undefined,
       undefined,
       undefined,
       rb
     );
 
-    return { ray, hit };
+    let hitPos: Vector3 | null = null;
+    if (hit) {
+      const point = ray.pointAt(hit.timeOfImpact); // Rapier Vec3
+      hitPos = new Vector3(point.x, point.y, point.z); // Convert to THREE vec
+    }
+
+    return { ray, hit, hitPos };
   }
 
   // getPlayerFromCollider(collider: any) {

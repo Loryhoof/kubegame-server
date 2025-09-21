@@ -15,6 +15,8 @@ import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 import { config } from "dotenv";
 import NPC from "./NPC";
+import { Hand } from "./Player";
+import Weapon from "./Holdable/Weapon";
 
 type ChatMessage = { id: string; nickname: string; text: string };
 
@@ -31,6 +33,9 @@ type PlayerData = {
   controlledObject: { id: string } | null;
   lastProcessedInputSeq: number;
   nickname: string;
+  leftHand: Hand;
+  rightHand: Hand;
+  viewQuaternion: Quaternion;
 };
 
 type ServerNotification = {
@@ -125,6 +130,9 @@ async function init() {
             : null,
           lastProcessedInputSeq: player.lastProcessedInputSeq,
           nickname: player.nickname ?? "",
+          leftHand: player.leftHand,
+          rightHand: player.rightHand,
+          viewQuaternion: player.viewQuaternion ?? new Quaternion(),
         };
       }
 
@@ -198,13 +206,20 @@ async function init() {
     type CommandData = {
       command: string;
       value: string;
+      amount?: number;
     };
 
     socket.on("user-command", (data: CommandData) => {
+      const amount = data.amount ?? 1;
+
       if (data.command == "change-nickname") {
         if (data.value.length > 20) return;
 
         world.getPlayerById(socket.id)?.setNickname(data.value);
+      }
+
+      if (data.command == "give") {
+        world.getPlayerById(socket.id)?.give(data.value, amount);
       }
     });
 
@@ -217,6 +232,7 @@ async function init() {
         shift: boolean;
         e: boolean;
         k: boolean;
+        r: boolean;
         " ": boolean;
         mouseLeft: boolean;
         mouseRight: boolean;
@@ -224,6 +240,7 @@ async function init() {
       seq: number;
       dt: number;
       camQuat: [number, number, number, number];
+      camPos: Vector3;
     };
 
     type RegisterObjectType = {
@@ -308,6 +325,15 @@ async function init() {
 
       player.keys = data.keys;
       player.wantsToInteract = data.keys.e;
+
+      const cameraQuat = new Quaternion(
+        data.camQuat[0],
+        data.camQuat[1],
+        data.camQuat[2],
+        data.camQuat[3]
+      );
+
+      player.viewQuaternion = cameraQuat;
 
       if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
         player.lastInteractedTime = Date.now();
@@ -402,6 +428,7 @@ async function init() {
         // }
 
         let sprintFactor = data.keys.shift ? 2 : 1;
+        if (data.keys.mouseRight) sprintFactor = 1;
 
         const BASE_SPEED = 4;
         player.velocity.x = worldDir.x * sprintFactor * BASE_SPEED;
@@ -411,49 +438,115 @@ async function init() {
         player.velocity.z = 0;
       }
 
-      if (data.keys.mouseLeft) {
-        if (player.controlledObject) {
-          if (player.controlledObject.getDriver() == player) {
-            player.controlledObject.setHorn(true);
-            return;
-          }
-        }
+      // --- Shooting + Attacking Handling ---
+      const wasMouseLeft = player.lastMouseLeft; // Remember old mouse state
+      const wasReload = player.lastR;
+      player.lastMouseLeft = data.keys.mouseLeft; // Update immediately for next tick
+      player.lastR = data.keys.r;
 
-        if (Date.now() - player.lastAttackTime >= 500) {
-          player.lastAttackTime = Date.now();
+      const aiming = data.keys.mouseRight;
+      const handItem = player.getHandItem() as Weapon | null;
 
-          const forward = new Vector3(0, 0, -1);
-          forward.applyQuaternion(player.quaternion);
+      const reloadPressed = data.keys.r && !wasReload;
 
-          const pos = player.physicsObject.rigidBody.translation();
-          const hit = PhysicsManager.getInstance().raycastFull(
-            new Vector3(pos.x, pos.y, pos.z),
-            forward,
-            player.physicsObject.rigidBody,
-            1
-          );
+      if (reloadPressed && handItem) {
+        if (Date.now() - handItem.lastReloadTime < handItem.reloadDurationMs)
+          return;
 
-          if (hit && hit.hit && hit.hit.collider) {
-            const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
-            if (hitPlayer) hitPlayer.damage(25);
+        handItem.lastReloadTime = Date.now();
+        handItem.reload();
+      }
 
-            io.emit("user_action", {
-              id: socket.id,
-              type: "attack",
-              hasHit: true,
-            });
+      if (aiming && handItem) {
+        // Rate of fire control
+        const now = Date.now();
+        const canShoot =
+          (now - handItem.lastShotTime >= handItem.fireRateMs || 100) &&
+          !handItem.isReloading; // fallback 100ms if not defined
+
+        // Only fire when button transitions from up → down for semi-auto weapons
+        const firePressed = data.keys.mouseLeft && !wasMouseLeft;
+
+        if (firePressed && canShoot) {
+          console.log("shooting");
+
+          if (handItem.ammo <= 0) {
+            // socket.emit("server-notification", {
+            //   type: "error",
+            //   content: `Out of ammo! Press R to reload.`,
+            // });
           } else {
-            io.emit("user_action", {
-              id: socket.id,
-              type: "attack",
-              hasHit: null,
-            });
+            // Consume ammo & set cooldown
+            handItem.ammo--;
+            handItem.lastShotTime = now;
+
+            // Get forward direction from camera quaternion
+            const forward = new Vector3(0, 0, -1)
+              .applyQuaternion(player.viewQuaternion)
+              .normalize();
+
+            // Perform raycast
+            const hit = PhysicsManager.getInstance().raycastFull(
+              data.camPos,
+              forward,
+              player.physicsObject.rigidBody,
+              100
+            );
+
+            if (hit?.hit) {
+              const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
+              if (hitPlayer) {
+                hitPlayer.damage(handItem.damage ?? 25);
+                world.registerHit(hit.hitPos!, hitPlayer.id);
+              } else {
+                world.registerHit(hit.hitPos!);
+              }
+            }
           }
         }
       } else {
-        if (
+        // Non-aiming left-click (e.g., melee or vehicle horn)
+        if (data.keys.mouseLeft && !wasMouseLeft) {
+          if (
+            player.controlledObject &&
+            player.controlledObject.getDriver() === player
+          ) {
+            player.controlledObject.setHorn(true);
+          } else if (Date.now() - player.lastAttackTime >= 500) {
+            player.lastAttackTime = Date.now();
+
+            const forward = new Vector3(0, 0, -1).applyQuaternion(
+              player.quaternion
+            );
+            const pos = player.physicsObject.rigidBody.translation();
+
+            const hit = PhysicsManager.getInstance().raycastFull(
+              new Vector3(pos.x, pos.y, pos.z),
+              forward,
+              player.physicsObject.rigidBody,
+              1
+            );
+
+            if (hit?.hit && hit.hit.collider) {
+              const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
+              if (hitPlayer) hitPlayer.damage(25);
+
+              io.emit("user_action", {
+                id: socket.id,
+                type: "attack",
+                hasHit: true,
+              });
+            } else {
+              io.emit("user_action", {
+                id: socket.id,
+                type: "attack",
+                hasHit: null,
+              });
+            }
+          }
+        } else if (
           player.controlledObject &&
-          player.controlledObject.getDriver() == player &&
+          player.controlledObject.getDriver() === player &&
           player.controlledObject.hornPlaying
         ) {
           player.controlledObject.setHorn(false);
@@ -531,6 +624,9 @@ async function init() {
           : null,
         lastProcessedInputSeq: player.lastProcessedInputSeq,
         nickname: player.nickname ?? "",
+        leftHand: player.leftHand,
+        rightHand: player.rightHand,
+        viewQuaternion: player.viewQuaternion ?? new Quaternion(),
       };
     }
 

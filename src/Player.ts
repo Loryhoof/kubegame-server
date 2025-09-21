@@ -3,11 +3,22 @@ import Vector3 from "./Math/Vector3";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
 import { Quaternion } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
+import { IHoldable } from "./interfaces/IHoldable";
+import Weapon from "./Holdable/Weapon";
 
 export type InputSeq = {
   seq: number;
   keys: any;
   dt: number;
+};
+
+type HoldItem = {
+  name: string;
+};
+
+export type Hand = {
+  side: "left" | "right";
+  item?: IHoldable;
 };
 
 class Player {
@@ -49,6 +60,14 @@ class Player {
   //
   public nickname: string | null = null;
 
+  public leftHand: Hand;
+  public rightHand: Hand;
+
+  public viewQuaternion: Quaternion | null = null;
+
+  public lastMouseLeft: boolean = false;
+  public lastR: boolean = false;
+
   constructor(
     id: string,
     position: Vector3,
@@ -61,6 +80,15 @@ class Player {
     this.color = color;
 
     this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
+
+    // const pistol = new Weapon("pistol");
+
+    this.leftHand = { side: "left" };
+    this.rightHand = { side: "right" };
+  }
+
+  getHandItem(): IHoldable | null {
+    return this.rightHand.item ?? null;
   }
 
   setNickname(n: string) {
@@ -147,6 +175,11 @@ class Player {
 
   give(item: any, amount: number) {
     if (item === "coin") this.coins += amount;
+
+    if (item === "pistol") {
+      const pistol = new Weapon("pistol");
+      this.rightHand.item = pistol;
+    }
   }
 
   isGrounded(): boolean {
