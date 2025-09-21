@@ -29,6 +29,7 @@ class Player {
   public color: string;
   public health: number = 100;
   public coins: number = 0;
+  public ammo: number = 64;
   public lastAttackTime: number = 0;
   public controller: any | undefined;
   public physicsObject: PhysicsObject;
@@ -68,6 +69,8 @@ class Player {
   public lastMouseLeft: boolean = false;
   public lastR: boolean = false;
 
+  public killCount: number = 0;
+
   constructor(
     id: string,
     position: Vector3,
@@ -81,10 +84,10 @@ class Player {
 
     this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
 
-    // const pistol = new Weapon("pistol");
+    const pistol = new Weapon("pistol");
 
     this.leftHand = { side: "left" };
-    this.rightHand = { side: "right" };
+    this.rightHand = { side: "right", item: pistol };
   }
 
   getHandItem(): IHoldable | null {
@@ -175,11 +178,8 @@ class Player {
 
   give(item: any, amount: number) {
     if (item === "coin") this.coins += amount;
-
-    if (item === "pistol") {
-      const pistol = new Weapon("pistol");
-      this.rightHand.item = pistol;
-    }
+    if (item === "pistol") this.rightHand.item = new Weapon("pistol");
+    if (item === "ammo") this.ammo += amount;
   }
 
   isGrounded(): boolean {

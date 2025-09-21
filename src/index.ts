@@ -16,7 +16,7 @@ import PhysicsManager from "./PhysicsManager";
 import { readFileSync } from "fs";
 import { config } from "dotenv";
 import NPC from "./NPC";
-import { Hand } from "./Player";
+import Player, { Hand } from "./Player";
 import Weapon from "./Holdable/Weapon";
 
 type ChatMessage = { id: string; nickname: string; text: string };
@@ -25,6 +25,7 @@ type PlayerData = {
   velocity: Vector3;
   health: number;
   coins: number;
+  ammo: number;
   id: string;
   position: Vector3;
   quaternion: Quaternion;
@@ -40,7 +41,7 @@ type PlayerData = {
 };
 
 type ServerNotification = {
-  type: "error" | "success" | "info";
+  type: "error" | "success" | "info" | "achievement";
   content: string;
 };
 
@@ -120,6 +121,7 @@ async function init() {
           velocity: player.velocity,
           health: player.health,
           coins: player.coins,
+          ammo: player.ammo,
           id: player.id,
           position: player.position,
           quaternion: player.quaternion,
@@ -224,6 +226,24 @@ async function init() {
       }
     });
 
+    function handleStatTracker(player: Player) {
+      const milestones = [1, 5, 10, 25, 50, 100, 250, 500, 1000];
+      if (!milestones.includes(player.killCount)) return;
+
+      let prefix =
+        player.killCount == 1 ? "First Kill!" : `${player.killCount} Kills!`;
+      let reward = 100;
+
+      const notification: ServerNotification = {
+        type: "achievement",
+        content: `${prefix} +${reward} Coins!`,
+      };
+
+      player.coins += reward;
+
+      socket.emit("server-notification", notification);
+    }
+
     type PlayerInput = {
       keys: {
         w: boolean;
@@ -303,6 +323,15 @@ async function init() {
 
         player.exitVehicle();
         return;
+      }
+
+      if (
+        data.keys.mouseLeft &&
+        player.controlledObject.getDriver() == player
+      ) {
+        vehicle.setHorn(true);
+      } else {
+        vehicle.setHorn(false);
       }
     });
 
@@ -451,11 +480,23 @@ async function init() {
       const reloadPressed = data.keys.r && !wasReload;
 
       if (reloadPressed && handItem) {
+        const enoughAmmo = player.ammo > 0;
+        if (!enoughAmmo) return;
+
+        // Check reload cooldown
         if (Date.now() - handItem.lastReloadTime < handItem.reloadDurationMs)
           return;
 
         handItem.lastReloadTime = Date.now();
-        handItem.reload();
+
+        // Calculate how much we actually need
+        const needed = handItem.capacity - handItem.ammo;
+        const toLoad = Math.min(needed, player.ammo);
+
+        // Deduct only what we have
+        player.ammo -= toLoad;
+
+        handItem.reload(toLoad);
       }
 
       if (aiming && handItem) {
@@ -550,17 +591,14 @@ async function init() {
                 // Apply damage
                 hitPlayer.damage(finalDamage);
 
-                // if (hitPlayer.health <= 0) {
-                //   const rewardAmount = randomIntBetween(4, 9);
+                if (hitPlayer.health <= 0) {
+                  const rewardAmount = randomIntBetween(4, 9);
 
-                //   player.give("coin", rewardAmount);
+                  player.give("coin", rewardAmount);
+                  player.killCount++;
 
-                //   const notification: ServerNotification = {
-                //     type: "success",
-                //     content: `+${rewardAmount}`,
-                //   };
-                //   socket.emit("server-notification", notification);
-                // }
+                  handleStatTracker(player);
+                }
 
                 world.registerHit(worldHit, hitPlayer.id, hitBodyPart);
               } else {
@@ -571,6 +609,7 @@ async function init() {
         }
       } else {
         // Non-aiming left-click (e.g., melee or vehicle horn)
+
         if (data.keys.mouseLeft && !wasMouseLeft) {
           if (
             player.controlledObject &&
@@ -678,6 +717,7 @@ async function init() {
         velocity: player.velocity,
         health: player.health,
         coins: player.coins,
+        ammo: player.ammo,
         id: player.id,
         position: player.position,
         quaternion: player.quaternion,

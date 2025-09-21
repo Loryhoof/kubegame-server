@@ -18,11 +18,13 @@ export default class Weapon implements IHoldable {
     this.ammo = capacity;
   }
 
-  reload(): void {
+  reload(amount: number): void {
+    if (this.ammo == this.capacity) return;
+
     this.isReloading = true;
 
     setTimeout(() => {
-      this.ammo = this.capacity;
+      this.ammo += amount;
       this.isReloading = false;
     }, this.reloadDurationMs);
   }

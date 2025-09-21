@@ -81,19 +81,19 @@ export default class Vehicle {
     ];
 
     this.seats = [
-      { position: new Vector3(0.45, 0.2, 0.2), type: "driver", seater: null },
+      { position: new Vector3(0.45, 0.6, 0.2), type: "driver", seater: null },
       {
-        position: new Vector3(-0.5, 0.2, 0.2),
+        position: new Vector3(-0.5, 0.6, 0.2),
         type: "passenger",
         seater: null,
       },
       {
-        position: new Vector3(-0.5, 0.2, -0.6),
+        position: new Vector3(-0.5, 0.6, -0.6),
         type: "passenger",
         seater: null,
       },
       {
-        position: new Vector3(0.45, 0.2, -0.6),
+        position: new Vector3(0.45, 0.6, -0.6),
         type: "passenger",
         seater: null,
       },

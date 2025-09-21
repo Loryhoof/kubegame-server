@@ -120,9 +120,11 @@ class NPC {
     //   this.isDead = false;
     // }, 2000);
 
-    // this.physicsObject.rigidBody.sleep();
-    // this.physicsObject.collider.setActiveEvents(0);
-    // this.physicsObject.collider.setEnabled(false);
+    this.physicsObject.rigidBody.sleep();
+
+    PhysicsManager.getInstance().physicsWorld.removeCollider(
+      this.physicsObject.collider
+    );
 
     // PhysicsManager.getInstance().remove(this.physicsObject);
 
@@ -208,7 +210,7 @@ class NPC {
     if (canJump) {
       this.lastJumpTime = now;
       this.isJumping = true;
-      this.physicsObject.rigidBody.applyImpulse({ x: 0, y: 0.8, z: 0 }, true);
+      this.physicsObject.rigidBody.applyImpulse({ x: 0, y: 1.5, z: 0 }, true);
     }
   }
 }
