@@ -201,8 +201,6 @@ export default class Vehicle {
       }
     });
 
-    PhysicsManager.getInstance().remove(this.physicsObject);
-
     this.hornPlaying = false;
 
     this.world.removeVehicle(this);

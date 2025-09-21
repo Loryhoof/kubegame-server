@@ -192,6 +192,14 @@ class World {
       this.io.emit("interactableCreated", pickup);
     }, 5000);
 
+    // setInterval(() => {
+    //   if (this.npcs.length >= 10) return;
+
+    //   this.addNPC(
+    //     new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
+    //   );
+    // }, 5000);
+
     // this.entities.push(box, box2, box3, box4);
     //this.interactables.push(interactable, interactable2, interactable3);
 
@@ -219,10 +227,15 @@ class World {
     // }, 20000);
   }
 
-  registerHit(position: Vector3, hitPlayer: string | null = null) {
+  registerHit(
+    position: Vector3,
+    hitPlayer: string | null = null,
+    hitBodyPart: string | null = null
+  ) {
     this.io.emit("register-hit", {
       position: position,
       hitPlayer: hitPlayer,
+      hitBodyPart: hitBodyPart,
     });
   }
   createHitmarker(position: Vector3) {
@@ -506,10 +519,53 @@ class World {
     player?.enterVehicle(car);
   }
 
+  addNPC(position: Vector3) {
+    const npc = new NPC(this, position, new Quaternion(), randomHex());
+
+    this.npcs.push(npc);
+
+    const data = {
+      velocity: npc.velocity,
+      health: npc.health,
+      coins: npc.coins,
+      id: npc.id,
+      position: npc.position,
+      quaternion: npc.quaternion,
+      color: npc.color,
+      keys: npc.keys,
+      isSitting: npc.isSitting,
+    };
+
+    this.io.emit("addNPC", data);
+  }
+
   removeVehicle(vehicle: Vehicle) {
     const uuid = vehicle.id;
+
+    PhysicsManager.getInstance().remove(vehicle.physicsObject);
+
     this.vehicles = this.vehicles.filter((vehicle) => vehicle.id !== uuid);
+
     this.io.emit("vehicleRemoved", uuid);
+  }
+
+  removeNPC(npc: NPC) {
+    const uuid = npc.id;
+
+    PhysicsManager.getInstance().remove(npc.physicsObject);
+
+    this.npcs = this.npcs.filter((n) => n.id !== uuid);
+
+    this.io.emit("npcRemoved", uuid);
+
+    setTimeout(() => {
+      const pos = new Vector3(
+        randomIntBetween(-50, 50),
+        5,
+        randomIntBetween(-50, 50)
+      );
+      this.addNPC(pos);
+    }, 1000);
   }
 
   addPlayer(networkId: string) {

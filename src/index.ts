@@ -7,6 +7,7 @@ import {
   extractYaw,
   getYawQuaternion,
   Quaternion,
+  randomIntBetween,
   Vector3,
 } from "./mathUtils";
 import World from "./World";
@@ -468,8 +469,6 @@ async function init() {
         const firePressed = data.keys.mouseLeft && !wasMouseLeft;
 
         if (firePressed && canShoot) {
-          console.log("shooting");
-
           if (handItem.ammo <= 0) {
             // socket.emit("server-notification", {
             //   type: "error",
@@ -496,8 +495,74 @@ async function init() {
             if (hit?.hit) {
               const hitPlayer = world.getPlayerFromCollider(hit.hit.collider);
               if (hitPlayer) {
-                hitPlayer.damage(handItem.damage ?? 25);
-                world.registerHit(hit.hitPos!, hitPlayer.id);
+                const worldHit = hit.hitPos!;
+                const distance = worldHit.distanceTo(data.camPos);
+
+                const colPos = hit.hit.collider.translation();
+                const local = {
+                  x: worldHit.x - colPos.x,
+                  y: worldHit.y - colPos.y,
+                  z: worldHit.z - colPos.z,
+                };
+
+                const baseDamage = handItem.damage ?? 25;
+
+                // --- Body Part Multiplier & Falloff Settings ---
+                let hitBodyPart: "head" | "torso" | "legs" = "torso";
+                let bodyPartMultiplier = 1.0;
+                let falloffStart = 5; // meters before damage starts to fall
+                let falloffEnd = 50; // meters where damage stops decreasing
+                let minFactor = 0.2; // minimum damage factor
+
+                if (local.y > 0.45) {
+                  hitBodyPart = "head";
+                  bodyPartMultiplier = 4.0; // full headshot multiplier
+                  falloffStart = 20; // headshots keep power until 20m
+                  falloffEnd = 100; // slower falloff for headshots
+                  minFactor = 0.5; // never below 50%
+                } else if (local.y < 0.0) {
+                  hitBodyPart = "legs";
+                  bodyPartMultiplier = 0.5; // legs weaker
+                  falloffStart = 5;
+                  falloffEnd = 40;
+                  minFactor = 0.2;
+                } else {
+                  hitBodyPart = "torso";
+                  bodyPartMultiplier = 1.0;
+                  falloffStart = 10;
+                  falloffEnd = 50;
+                  minFactor = 0.2;
+                }
+
+                // --- Distance factor calculation ---
+                let distanceFactor = 1.0;
+                if (distance > falloffStart) {
+                  const t =
+                    (distance - falloffStart) / (falloffEnd - falloffStart);
+                  distanceFactor = 1.0 - t;
+                  distanceFactor = Math.max(minFactor, distanceFactor);
+                }
+
+                // --- Final Damage ---
+                const finalDamage =
+                  baseDamage * bodyPartMultiplier * distanceFactor;
+
+                // Apply damage
+                hitPlayer.damage(finalDamage);
+
+                // if (hitPlayer.health <= 0) {
+                //   const rewardAmount = randomIntBetween(4, 9);
+
+                //   player.give("coin", rewardAmount);
+
+                //   const notification: ServerNotification = {
+                //     type: "success",
+                //     content: `+${rewardAmount}`,
+                //   };
+                //   socket.emit("server-notification", notification);
+                // }
+
+                world.registerHit(worldHit, hitPlayer.id, hitBodyPart);
               } else {
                 world.registerHit(hit.hitPos!);
               }

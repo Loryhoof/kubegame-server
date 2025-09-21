@@ -2,7 +2,7 @@ import { IHoldable } from "../interfaces/IHoldable";
 
 export default class Weapon implements IHoldable {
   public name: string;
-  public ammoCapacity: number;
+  public capacity: number;
   public ammo: number;
   public lastShotTime: number = -Infinity;
   public lastReloadTime: number = -Infinity;
@@ -11,18 +11,18 @@ export default class Weapon implements IHoldable {
   public isReloading: boolean = false;
   public reloadDurationMs: number = 1000;
 
-  constructor(name: string, ammoCapacity: number = 16) {
+  constructor(name: string, capacity: number = 16) {
     this.name = name;
-    this.ammoCapacity = ammoCapacity;
+    this.capacity = capacity;
 
-    this.ammo = ammoCapacity;
+    this.ammo = capacity;
   }
 
   reload(): void {
     this.isReloading = true;
 
     setTimeout(() => {
-      this.ammo = this.ammoCapacity;
+      this.ammo = this.capacity;
       this.isReloading = false;
     }, this.reloadDurationMs);
   }

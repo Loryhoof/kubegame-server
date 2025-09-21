@@ -167,7 +167,7 @@ export default class PhysicsManager {
       .lockRotations(); //kinematicVelocityBased
     let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
 
-    let halfHeight = 0.2; // weird s
+    let halfHeight = 0.55; // weird s
     let radius = 0.275;
 
     let capsuleColDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);

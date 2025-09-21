@@ -44,6 +44,8 @@ class NPC {
   private hasTarget: boolean = false;
   private currentTarget: Player | null = null;
 
+  public isDead: boolean = false;
+
   constructor(
     world: World,
     position: Vector3,
@@ -60,6 +62,8 @@ class NPC {
   }
 
   updateAI(delta: number) {
+    if (!this.alive()) return;
+
     const MIN_DISTANCE = 3;
     const MOVEMENT_SPEED = 4;
 
@@ -100,37 +104,42 @@ class NPC {
     }
   }
 
+  alive(): boolean {
+    return this.health > 0;
+  }
+
+  handleDeath() {
+    if (this.isDead) return;
+
+    this.isDead = true;
+
+    this.velocity.set(0, 0, 0);
+
+    // setTimeout(() => {
+    //   this.health = 100;
+    //   this.isDead = false;
+    // }, 2000);
+
+    // this.physicsObject.rigidBody.sleep();
+    // this.physicsObject.collider.setActiveEvents(0);
+    // this.physicsObject.collider.setEnabled(false);
+
+    // PhysicsManager.getInstance().remove(this.physicsObject);
+
+    setTimeout(() => {
+      this.world.removeNPC(this); //
+    }, 2000);
+
+    //this.world.removeNPC(this);
+  }
+
   update(delta: number) {
+    if (!this.alive()) this.handleDeath();
+
     this.updateAI(delta);
-    // if (this.controlledObject) {
-    //   this.isSitting = true;
-    //   this.physicsObject.rigidBody.sleep();
-    //   // this.setPosition(
-    //   //   this.controlledObject.physicsObject.rigidBody.translation() as Vector3
-    //   // );
-
-    //   const seatPos = this.controlledObject.getSeatPosition(this);
-    //   this.setPosition(seatPos);
-
-    //   // please fix this.. we do opposite quaternion which i feel like is bad at runtime
-    //   const oppositeQuat = new Quaternion();
-    //   oppositeQuat.setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
-
-    //   this.setQuaternion(
-    //     this.controlledObject.quaternion.clone().multiply(oppositeQuat)
-    //   );
-    //   return;
-    // } else {
-    //   this.isSitting = false;
-    // }
 
     if (this.position.y <= -100) {
-      this.teleportTo(new Vector3(0, 5, 0));
-    }
-
-    if (this.health <= 0) {
-      this.health = 100;
-      this.teleportTo(new Vector3(0, 5, 0));
+      this.teleportTo(new Vector3(0, 5, 0)); //
     }
 
     // Check grounded before movement
@@ -182,9 +191,9 @@ class NPC {
     if (this.health > 100) this.health = 100;
   }
 
-  give(item: any, amount: number) {
-    if (item === "coin") this.coins += amount;
-  }
+  // give(item: any, amount: number) {
+  //   if (item === "coin") this.coins += amount;
+  // }
 
   isGrounded(): boolean {
     return PhysicsManager.getInstance().grounded(this.physicsObject.rigidBody);
