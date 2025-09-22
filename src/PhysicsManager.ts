@@ -230,14 +230,17 @@ export default class PhysicsManager {
     shapePos: any,
     shapeRot: any,
     shape: any,
-    collisionGroup: number | undefined
+    filterExcludeCollider: any,
+    filterExcludeRigidBody: any
   ) {
-    return this.physicsWorld.intersectionWithShape(
+    return (this.physicsWorld as RAPIER.World).intersectionWithShape(
       shapePos,
       shapeRot,
       shape,
       undefined,
-      collisionGroup
+      undefined,
+      filterExcludeCollider,
+      filterExcludeRigidBody
     );
   }
 
@@ -367,6 +370,7 @@ export default class PhysicsManager {
     if (!this.physicsIsReady) {
       return;
     }
+
     (this.physicsWorld as RAPIER.World).step();
   }
 }

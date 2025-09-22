@@ -22,6 +22,7 @@ import path from "path";
 import { readdir, readdirSync, readFileSync } from "fs";
 import Trimesh from "./Shapes/Trimesh";
 import NPC from "./NPC";
+import { ServerNotification } from ".";
 
 const zoneSpawnLimit: number = 10;
 
@@ -237,6 +238,9 @@ class World {
       hitPlayer: hitPlayer,
       hitBodyPart: hitBodyPart,
     });
+  }
+  createServerNotification(notification: ServerNotification) {
+    this.io.emit("server-notification", notification);
   }
   createHitmarker(position: Vector3) {
     this.io.emit("create-hitmarker", { position: position });

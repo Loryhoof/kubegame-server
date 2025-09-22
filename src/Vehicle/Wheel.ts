@@ -41,7 +41,12 @@ export default class Wheel {
 
   private dragCoeff: number = 2;
 
+  // Grip smoothing for handbrake
+  private currentGrip: number = 4;
+
   public worldPosition: Vector3 = new Vector3();
+
+  public grounded: boolean = false;
 
   constructor(
     parent: Vehicle,
@@ -67,23 +72,19 @@ export default class Wheel {
   update(delta: number) {
     const phy = PhysicsManager.getInstance();
 
-    // 1️⃣ Wheel world rotation including steer
-    // Corrected
+    // Wheel world rotation
     const bodyQuat = this.parent.quaternion.clone();
-
-    // World position: only parent rotation, no steering
     const wheelWorldPos = this.parent.position
       .clone()
       .add(this.position.clone().applyQuaternion(bodyQuat));
 
-    // Orientation: parent rotation * steering rotation
     const steerQuat = new Quaternion().setFromAxisAngle(
       new Vector3(0, 1, 0),
       this.steerAngle
     );
     const wheelQuat = bodyQuat.clone().multiply(steerQuat);
 
-    // 3️⃣ Suspension raycast
+    // Suspension raycast
     const worldDown = DOWN.clone().applyQuaternion(wheelQuat);
     const rayHit = phy.raycastFull(
       wheelWorldPos,
@@ -91,11 +92,14 @@ export default class Wheel {
       this.parent.physicsObject.rigidBody,
       this.maxLength + this.radius
     );
+
+    this.grounded = rayHit.hit != null;
+
     if (!rayHit?.hit) return;
 
     const { ray, hit } = rayHit;
 
-    // 4️⃣ Compute spring length
+    // Spring length & suspension forces
     this.lastLength = this.springLength;
     const targetPoint = (ray.origin as Vector3)
       .clone()
@@ -107,7 +111,6 @@ export default class Wheel {
       this.maxLength
     );
 
-    // 5️⃣ Compute suspension velocity & forces
     this.springVelocity = (this.lastLength - this.springLength) / delta;
     this.springForce =
       this.springStiffness * (this.restLength - this.springLength);
@@ -116,11 +119,11 @@ export default class Wheel {
       .clone()
       .multiplyScalar(-(this.springForce + this.damperForce));
 
-    // 6️⃣ Wheel velocity at wheel world position
+    // Wheel velocity at contact point
     const wheelVelocity =
       this.parent.physicsObject.rigidBody.velocityAtPoint(wheelWorldPos);
 
-    // 7️⃣ Wheel axes in world space
+    // Wheel directions
     const forwardDir = new Vector3(0, 0, 1)
       .applyQuaternion(wheelQuat)
       .normalize();
@@ -128,36 +131,42 @@ export default class Wheel {
       .applyQuaternion(wheelQuat)
       .normalize();
 
-    // 8️⃣ Driver input
-    let forwardInput = 0;
-
-    const speed = 0.3;
-
-    const driver = this.parent.getDriver();
-
-    if (driver?.keys.w) forwardInput = speed;
-    else if (driver?.keys.s) forwardInput = -speed;
+    // Inputs from Vehicle controls
+    const { throttle, brake, handbrake } = this.parent as any;
+    const forwardInput = throttle * 1;
 
     const normalForce = this.suspensionForce.length();
-    const tireGrip = 2; // adjustable
+    const engineForce = 3000; // drive power
 
-    // 9️⃣ Longitudinal force (throttle)
-    this.Fx = forwardInput * 0.5 * normalForce * tireGrip;
+    // Engine force
+    this.Fx = forwardInput * engineForce;
 
-    // 🔟 Braking force (opposes forward velocity)
-    if (driver?.keys[" "]) {
+    // Normal braking force on all wheels
+    if (brake > 0) {
       const forwardVel = new Vector3()
         .copy(wheelVelocity as Vector3)
         .dot(forwardDir);
-      const maxBrake = 5000;
-      // console.log(-forwardVel * 50);
-      this.brakeForce = clamp(forwardVel * 500, 0, maxBrake); // 50 is brake stiffness
+      const maxBrake = 8000;
+      this.brakeForce = clamp(forwardVel * 1200, 0, maxBrake);
     } else {
       this.brakeForce = 0;
     }
 
-    // 1️⃣1️⃣ Lateral force
-    const lateralStiffness = 5000; // adjustable
+    // Handbrake reduces rear grip instantly, recovers gradually
+    const normalGrip = 4;
+    const brakeGrip = 2;
+    if (
+      handbrake > 0 &&
+      (this.wheelType === "RearLeft" || this.wheelType === "RearRight")
+    ) {
+      this.currentGrip = brakeGrip;
+    } else {
+      this.currentGrip += (normalGrip - this.currentGrip) * 0.05;
+    }
+    const tireGrip = this.currentGrip;
+
+    // Lateral force
+    const lateralStiffness = 5000;
     this.Fy = clamp(
       -new Vector3().copy(wheelVelocity as Vector3).dot(rightDir) *
         lateralStiffness,
@@ -165,12 +174,24 @@ export default class Wheel {
       normalForce * tireGrip
     );
 
-    // 1️⃣2️⃣ Convert to world space and total force
+    // Friction circle clamp
+    const maxForce = normalForce * tireGrip;
+    const totalLongitudinal = this.Fx - this.brakeForce;
+    const totalLateral = this.Fy;
+    const totalForceLength = Math.sqrt(
+      totalLongitudinal * totalLongitudinal + totalLateral * totalLateral
+    );
 
+    if (totalForceLength > maxForce) {
+      const scale = maxForce / totalForceLength;
+      this.Fx *= scale;
+      this.Fy *= scale;
+    }
+
+    // Apply forces
     const forwardVel = new Vector3()
       .copy(wheelVelocity as Vector3)
       .dot(forwardDir);
-
     const dragForce = forwardDir
       .clone()
       .multiplyScalar(-this.dragCoeff * forwardVel * Math.abs(forwardVel));
@@ -179,12 +200,9 @@ export default class Wheel {
       .clone()
       .multiplyScalar(this.Fx - this.brakeForce)
       .add(dragForce);
-
     const fYWorld = rightDir.clone().multiplyScalar(this.Fy);
-
     const totalForce = this.suspensionForce.clone().add(fXWorld).add(fYWorld);
 
-    // 1️⃣3️⃣ Apply impulse at wheel world position
     const impulse = totalForce.clone().multiplyScalar(delta);
     this.parent.physicsObject.rigidBody.applyImpulseAtPoint(
       impulse,
@@ -192,26 +210,20 @@ export default class Wheel {
       true
     );
 
-    // 1️⃣4️⃣ Update wheel quaternion for rendering
-
-    // Wheel orientation = vehicle rotation * steer rotation
+    // Update wheel orientation for rendering
     const steerQuat2 = new Quaternion().setFromAxisAngle(
       new Vector3(0, 1, 0),
       this.steerAngle
     );
     this.quaternion = this.baseQuaternion.clone().multiply(steerQuat2);
 
-    // Compute the wheel’s world position for rendering
+    // Local space wheel position for rendering
     const wheelCenterWorldPos = targetPoint
       .clone()
       .add(worldDown.clone().multiplyScalar(-this.radius));
-
-    // Convert to local space relative to parent
-
-    // actually local, dont have to change variable name, ignore this
     this.worldPosition = wheelCenterWorldPos
       .clone()
-      .sub(this.parent.position) // remove parent world translation
-      .applyQuaternion(this.parent.quaternion.clone().invert()); // rotate into parent local space
+      .sub(this.parent.position)
+      .applyQuaternion(this.parent.quaternion.clone().invert());
   }
 }
