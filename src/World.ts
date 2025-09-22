@@ -373,12 +373,19 @@ class World {
       player.update(delta);
 
       if (player.health <= 0) {
-        // player.setPosition(new Vector3(0, 0, 0));
-
-        player.teleportTo(new Vector3(0, 10, 0));
-
-        player.health = 100;
+        if (!player.isDead) {
+          player.die();
+          this.io.emit("player-death", player.id);
+        }
       }
+
+      // if (player.health <= 0) {
+      //   // player.setPosition(new Vector3(0, 0, 0));
+
+      //   player.teleportTo(new Vector3(0, 10, 0));
+
+      //   player.health = 100;
+      // }
 
       if (player.position.y <= -100) {
         player.teleportTo(new Vector3(0, 5, 0));

@@ -38,6 +38,8 @@ type PlayerData = {
   leftHand: Hand;
   rightHand: Hand;
   viewQuaternion: Quaternion;
+  isDead: boolean;
+  killCount: number;
 };
 
 type ServerNotification = {
@@ -136,6 +138,8 @@ async function init() {
           leftHand: player.leftHand,
           rightHand: player.rightHand,
           viewQuaternion: player.viewQuaternion ?? new Quaternion(),
+          isDead: player.isDead,
+          killCount: player.killCount,
         };
       }
 
@@ -223,6 +227,10 @@ async function init() {
 
       if (data.command == "give") {
         world.getPlayerById(socket.id)?.give(data.value, amount);
+      }
+
+      if (data.command == "suicide") {
+        world.getPlayerById(socket.id)?.damage(100);
       }
     });
 
@@ -333,6 +341,18 @@ async function init() {
       } else {
         vehicle.setHorn(false);
       }
+    });
+
+    socket.on("player-respawn", () => {
+      if (!readyPlayers.has(socket.id)) return;
+
+      const { players } = world.getState();
+      const player = players.get(socket.id);
+      if (!player) return;
+
+      player.respawn();
+
+      io.emit("player-respawn", player.id);
     });
 
     socket.on("playerInput", (data: PlayerInput) => {
@@ -732,6 +752,8 @@ async function init() {
         leftHand: player.leftHand,
         rightHand: player.rightHand,
         viewQuaternion: player.viewQuaternion ?? new Quaternion(),
+        isDead: player.isDead,
+        killCount: player.killCount,
       };
     }
 

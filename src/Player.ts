@@ -1,7 +1,7 @@
 import RAPIER, { QueryFilterFlags } from "@dimforge/rapier3d-compat";
 import Vector3 from "./Math/Vector3";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
-import { Quaternion } from "./mathUtils";
+import { Quaternion, randomIntBetween } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
 import { IHoldable } from "./interfaces/IHoldable";
 import Weapon from "./Holdable/Weapon";
@@ -71,6 +71,8 @@ class Player {
 
   public killCount: number = 0;
 
+  public isDead: boolean = false;
+
   constructor(
     id: string,
     position: Vector3,
@@ -99,6 +101,11 @@ class Player {
   }
 
   update(delta: number) {
+    // if (!this.isDead && this.health <= 0) {
+    //   this.isDead = true;
+    // }
+
+    // if (this.isDead) return;
     // if (this.controlledObject) {
     //   this.isSitting = true;
     //   this.physicsObject.rigidBody.sleep();
@@ -154,6 +161,22 @@ class Player {
     if (this.grounded) {
       this.isJumping = false;
     }
+  }
+
+  die() {
+    this.isDead = true;
+    this.physicsObject.rigidBody.sleep();
+  }
+
+  respawn() {
+    this.health = 100;
+    this.killCount = 0;
+    this.isDead = false;
+
+    this.physicsObject.rigidBody.wakeUp();
+    this.teleportTo(
+      new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
+    );
   }
 
   setPosition(position: Vector3) {
