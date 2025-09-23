@@ -58,7 +58,8 @@ class NPC {
     this.quaternion = quaternion;
     this.color = color;
 
-    this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
+    this.physicsObject =
+      PhysicsManager.getInstance().createPlayerCapsule(position);
   }
 
   updateAI(delta: number) {
@@ -128,9 +129,7 @@ class NPC {
 
     // PhysicsManager.getInstance().remove(this.physicsObject);
 
-    setTimeout(() => {
-      this.world.removeNPC(this); //
-    }, 2000);
+    this.world.removeNPC(this, 2000);
 
     //this.world.removeNPC(this);
   }

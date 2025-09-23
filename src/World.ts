@@ -193,13 +193,13 @@ class World {
       this.io.emit("interactableCreated", pickup);
     }, 5000);
 
-    // setInterval(() => {
-    //   if (this.npcs.length >= 10) return;
+    setInterval(() => {
+      if (this.npcs.length > 0) return;
 
-    //   this.addNPC(
-    //     new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
-    //   );
-    // }, 5000);
+      this.addNPC(
+        new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
+      );
+    }, 1000);
 
     // this.entities.push(box, box2, box3, box4);
     //this.interactables.push(interactable, interactable2, interactable3);
@@ -560,23 +560,23 @@ class World {
     this.io.emit("vehicleRemoved", uuid);
   }
 
-  removeNPC(npc: NPC) {
+  removeNPC(npc: NPC, delay: number = 0) {
     const uuid = npc.id;
 
-    PhysicsManager.getInstance().remove(npc.physicsObject);
-
-    this.npcs = this.npcs.filter((n) => n.id !== uuid);
-
-    this.io.emit("npcRemoved", uuid);
-
     setTimeout(() => {
-      const pos = new Vector3(
-        randomIntBetween(-50, 50),
-        5,
-        randomIntBetween(-50, 50)
-      );
-      this.addNPC(pos);
-    }, 1000);
+      PhysicsManager.getInstance().remove(npc.physicsObject);
+      this.npcs = this.npcs.filter((n) => n.id !== uuid);
+      this.io.emit("npcRemoved", uuid);
+    }, delay);
+
+    // setTimeout(() => {
+    //   const pos = new Vector3(
+    //     randomIntBetween(-50, 50),
+    //     5,
+    //     randomIntBetween(-50, 50)
+    //   );
+    //   this.addNPC(pos);
+    // }, 1000);
   }
 
   addPlayer(networkId: string) {

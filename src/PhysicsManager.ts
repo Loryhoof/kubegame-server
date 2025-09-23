@@ -161,9 +161,9 @@ export default class PhysicsManager {
     return { rigidBody, collider };
   }
 
-  createPlayerCapsule(): PhysicsObject {
+  createPlayerCapsule(position: Vector3 = new Vector3(0, 5, 0)): PhysicsObject {
     let rbDesc = RAPIER.RigidBodyDesc.dynamic()
-      .setTranslation(0, 5, 0)
+      .setTranslation(position.x, position.y, position.z)
       .lockRotations(); //kinematicVelocityBased
     let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
 
