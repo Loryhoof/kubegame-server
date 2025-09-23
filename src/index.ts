@@ -432,6 +432,14 @@ function attachSocketHandlers(io: Server, world: World) {
       socket.emit("syncTimeResponse", { clientSent, serverNow: Date.now() });
     });
 
+    socket.on("init-user-settings", (data: { nickname?: string }) => {
+      const { nickname } = data;
+
+      if (nickname) {
+        world.getPlayerById(socket.id)?.setNickname(nickname);
+      }
+    });
+
     socket.on("readyForWorld", () => {
       readyPlayers.add(socket.id);
 
