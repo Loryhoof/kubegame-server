@@ -52,19 +52,19 @@ export type ServerNotification = {
 };
 
 type PlayerInput = {
-  keys: {
-    w: boolean;
-    a: boolean;
-    s: boolean;
-    d: boolean;
-    shift: boolean;
-    e: boolean;
-    k: boolean;
-    r: boolean;
-    h: boolean;
-    " ": boolean;
-    mouseLeft: boolean;
-    mouseRight: boolean;
+  actions: {
+    moveForward: boolean;
+    moveBackward: boolean;
+    moveLeft: boolean;
+    moveRight: boolean;
+    jump: boolean;
+    sprint: boolean;
+    interact: boolean;
+    reload: boolean;
+    shoot: boolean;
+    aim: boolean;
+    spawnVehicle: boolean;
+    useHorn: boolean;
   };
   seq: number;
   dt: number;
@@ -120,7 +120,7 @@ function serializePlayer(p: Player): PlayerData {
     position: p.position,
     quaternion: p.quaternion,
     color: p.color,
-    keys: p.keys,
+    keys: p.actions,
     isSitting: p.isSitting,
     controlledObject: p.controlledObject ? { id: p.controlledObject.id } : null,
     lastProcessedInputSeq: p.lastProcessedInputSeq,
@@ -266,18 +266,18 @@ function handleCombat(
   world: World,
   socket: any
 ) {
-  const wasMouseLeft = player.lastMouseLeft;
-  const wasReload = player.lastR;
+  const wasMouseLeft = player.prevActions.shoot;
+  const wasReload = player.prevActions.reload;
 
   // Update edge-tracking immediately for next frame, regardless of success paths
-  player.lastMouseLeft = data.keys.mouseLeft;
-  player.lastR = data.keys.r;
+  // player.lastMouseLeft = data.actions.shoot;
+  // player.lastR = data.actions.reload;
 
   const handItem = player.getHandItem() as Weapon | null;
-  const aiming = data.keys.mouseRight;
+  const aiming = data.actions.aim;
 
   // --- Reload (R edge) ---
-  const reloadPressed = data.keys.r && !wasReload;
+  const reloadPressed = data.actions.reload && !wasReload;
   if (reloadPressed && handItem) {
     if (player.ammo > 0) {
       if (Date.now() - handItem.lastReloadTime >= handItem.reloadDurationMs) {
@@ -295,7 +295,7 @@ function handleCombat(
   // --- Ranged (aim + left click edge, semi-auto)
   if (aiming && handItem) {
     const now = Date.now();
-    const firePressed = data.keys.mouseLeft && !wasMouseLeft;
+    const firePressed = data.actions.shoot && !wasMouseLeft;
     const canShoot =
       now - handItem.lastShotTime >= (handItem.fireRateMs || 100) &&
       !handItem.isReloading;
@@ -526,7 +526,9 @@ function attachSocketHandlers(io: Server, world: World) {
 
       const vehicle = player.controlledObject;
       vehicle.lastProcessedInputSeq = data.seq;
-      player.keys = data.keys;
+
+      player.prevActions = { ...player.actions };
+      player.actions = data.actions;
 
       // Update player view from camera (needed for aiming/shooting in vehicles)
       player.viewQuaternion = new Quaternion(
@@ -540,14 +542,17 @@ function attachSocketHandlers(io: Server, world: World) {
       handleCombat(player, data, world, socket);
 
       // Exit vehicle
-      if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
+      if (
+        data.actions.interact &&
+        Date.now() - player.lastInteractedTime >= 500
+      ) {
         player.lastInteractedTime = Date.now();
         player.exitVehicle();
         return;
       }
 
       // Horn via 'h' while driving
-      if (data.keys.h && vehicle.getDriver() === player) {
+      if (data.actions.useHorn && vehicle.getDriver() === player) {
         vehicle.setHorn(true);
       } else {
         vehicle.setHorn(false);
@@ -578,15 +583,17 @@ function attachSocketHandlers(io: Server, world: World) {
 
       // Movement input
       const inputDir = new Vector3(
-        (data.keys.a ? -1 : 0) + (data.keys.d ? 1 : 0),
+        (data.actions.moveLeft ? -1 : 0) + (data.actions.moveRight ? 1 : 0),
         0,
-        (data.keys.w ? -1 : 0) + (data.keys.s ? 1 : 0)
+        (data.actions.moveForward ? -1 : 0) +
+          (data.actions.moveBackward ? 1 : 0)
       );
 
-      if (data.keys[" "]) player.jump();
+      if (data.actions.jump) player.jump();
 
-      player.keys = data.keys;
-      player.wantsToInteract = data.keys.e;
+      player.prevActions = { ...player.actions };
+      player.actions = data.actions;
+      player.wantsToInteract = data.actions.interact;
 
       // Update view quaternion from camera (used for aiming & shooting)
       const cameraQuat = new Quaternion(
@@ -599,7 +606,10 @@ function attachSocketHandlers(io: Server, world: World) {
       player.viewQuaternion = cameraQuat;
 
       // Interact / Enter-Exit vehicle
-      if (data.keys.e && Date.now() - player.lastInteractedTime >= 500) {
+      if (
+        data.actions.interact &&
+        Date.now() - player.lastInteractedTime >= 500
+      ) {
         player.lastInteractedTime = Date.now();
 
         if (player.controlledObject) {
@@ -614,7 +624,10 @@ function attachSocketHandlers(io: Server, world: World) {
       }
 
       // Spawn car (K)
-      if (data.keys.k && Date.now() - player.lastSpawnedCarTime >= 500) {
+      if (
+        data.actions.spawnVehicle &&
+        Date.now() - player.lastSpawnedCarTime >= 500
+      ) {
         player.lastSpawnedCarTime = Date.now();
 
         if (player.controlledObject != null || player.isSitting) return;
@@ -666,7 +679,7 @@ function attachSocketHandlers(io: Server, world: World) {
           const worldDir = applyQuaternion(inputDir, yawQuat);
           const yaw = Math.atan2(-worldDir.x, -worldDir.z);
 
-          if (data.keys.mouseRight) {
+          if (data.actions.aim) {
             player.quaternion = yawQuat;
           } else {
             player.quaternion = new Quaternion(
@@ -677,8 +690,8 @@ function attachSocketHandlers(io: Server, world: World) {
             );
           }
 
-          let sprintFactor = data.keys.shift ? 2 : 1;
-          if (data.keys.mouseRight) sprintFactor = 1;
+          let sprintFactor = data.actions.sprint ? 2 : 1;
+          if (data.actions.aim) sprintFactor = 1;
 
           const BASE_SPEED = 4;
           player.velocity.x = worldDir.x * sprintFactor * BASE_SPEED;
@@ -693,11 +706,18 @@ function attachSocketHandlers(io: Server, world: World) {
       handleCombat(player, data, world, socket);
 
       // Non-aiming left-click melee (on foot only)
-      const wasMouseLeft = player.lastMouseLeft; // already updated inside handleCombat
+
+      // console.log(
+      //   wasMouseLeft,
+      //   data.actions.aim,
+      //   data.actions.shoot,
+      //   player.controlledObject
+      // );
+
       if (
-        !data.keys.mouseRight &&
-        data.keys.mouseLeft &&
-        !wasMouseLeft &&
+        !data.actions.aim &&
+        data.actions.shoot &&
+        !player.prevActions.shoot &&
         !player.controlledObject
       ) {
         if (Date.now() - player.lastAttackTime >= 500) {

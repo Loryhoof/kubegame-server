@@ -28,7 +28,7 @@ class Player {
   public velocity: Vector3 = new Vector3(0, 0, 0);
   public color: string;
   public health: number = 100;
-  public coins: number = 10000;
+  public coins: number = 100;
   public ammo: number = 64;
   public lastAttackTime: number = 0;
   public controller: any | undefined;
@@ -52,7 +52,8 @@ class Player {
   public lastSpawnedCarTime: number = 0;
 
   // anim/keys
-  public keys: Record<string, boolean> = {};
+  public actions: Record<string, boolean> = {};
+  public prevActions: Record<string, boolean> = {};
 
   public isSitting: boolean = false;
 
@@ -65,9 +66,6 @@ class Player {
   public rightHand: Hand;
 
   public viewQuaternion: Quaternion | null = null;
-
-  public lastMouseLeft: boolean = false;
-  public lastR: boolean = false;
 
   public killCount: number = 0;
 

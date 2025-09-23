@@ -169,7 +169,7 @@ export default class Vehicle {
     const driver = this.seats[0].seater;
     if (!driver) return;
 
-    const { w, a, s, d, " ": space } = driver.keys;
+    // const { w, a, s, d, " ": space } = driver.keys;
 
     this.throttle = 0;
     this.brake = 0;
@@ -181,16 +181,16 @@ export default class Vehicle {
     const forwardDir = new Vector3(0, 0, 1).applyQuaternion(this.quaternion);
     forwardVel = new Vector3(vel.x, vel.y, vel.z).dot(forwardDir);
 
-    if (w) this.throttle = 1;
-    if (s) {
+    if (driver.actions.moveForward) this.throttle = 1;
+    if (driver.actions.moveBackward) {
       if (forwardVel > 1) this.brake = 1;
       else this.throttle = -1;
     }
 
-    if (space) this.handbrake = 1;
+    if (driver.actions.jump) this.handbrake = 1;
 
-    if (a) this.steer = 1;
-    else if (d) this.steer = -1;
+    if (driver.actions.moveLeft) this.steer = 1;
+    else if (driver.actions.moveRight) this.steer = -1;
 
     if (this.steer > 0) {
       this.ackermannAngleLeft =
