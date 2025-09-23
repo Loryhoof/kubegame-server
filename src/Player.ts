@@ -28,7 +28,7 @@ class Player {
   public velocity: Vector3 = new Vector3(0, 0, 0);
   public color: string;
   public health: number = 100;
-  public coins: number = 0;
+  public coins: number = 100;
   public ammo: number = 64;
   public lastAttackTime: number = 0;
   public controller: any | undefined;
