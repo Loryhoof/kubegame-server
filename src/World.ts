@@ -33,6 +33,8 @@ export type TerrainData = {
   nrows: number;
   ncols: number;
   scale: Vector3;
+
+  roadMask: Float32Array;
 };
 
 type ObjectMapType = { vertices: any; indices: any };
@@ -58,7 +60,7 @@ class World {
   init() {
     const physics = PhysicsManager.getInstance();
 
-    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(500, 0.1, 500));
+    // physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(500, 0.1, 500));
 
     // const ground = new Box(
     //   500,
@@ -71,14 +73,14 @@ class World {
     // this.entities.push(ground);
     // car test
 
-    const npc = new NPC(
-      this,
-      new Vector3(0, 5, 0),
-      new Quaternion(),
-      randomHex()
-    );
+    // const npc = new NPC(
+    //   this,
+    //   new Vector3(0, 5, 0),
+    //   new Quaternion(),
+    //   randomHex()
+    // );
 
-    this.npcs.push(npc);
+    // this.npcs.push(npc);
 
     const ramp = new Trimesh(
       new Vector3(40, -0.5, 10),
@@ -174,7 +176,7 @@ class World {
     //   "#0000ff"
     // );
 
-    //this.createTerrain();
+    this.createTerrain();
 
     setInterval(() => {
       if (this.interactables.length >= 10) return;
@@ -279,85 +281,223 @@ class World {
     return fileMap;
   }
   createTerrain() {
-    const nrows = 200;
-    const ncols = 200;
+    const nrows = 1000;
+    const ncols = 1000;
+
     const heights = new Float32Array(nrows * ncols);
+    const roadMask = new Float32Array(nrows * ncols); // legacy typing / debug
 
     const position = new Vector3();
     const quaternion = new Quaternion();
 
-    const scaleFactor = 3;
+    const scaleFactor = 1;
     const heightScaleFactor = 1.5;
 
-    const roadWidth = 6;
-    const roadFlattenHeight = -1.5;
+    // ---- Road params (grid units) ----
+    const roadWidth = 18; // full flat platform
+    const asphaltWidth = 14; // inner black ribbon
+    const roadHalf = roadWidth * 0.5;
+    const asphaltHalf = asphaltWidth * 0.5;
 
-    const circleA = { centerX: 0, centerZ: 0, radius: 10 };
-    const circleB = { centerX: 200, centerZ: 200, radius: 10 };
+    const roadHeight = 0.0; // flat Y in grid coords
+    const roadFalloff = 6.0; // blend back to terrain
 
+    // ---- Base terrain ----
     const noise2D = createNoise2D();
+    const noiseScale = 0.015;
 
-    // Define Bezier control points for the road
-    const roadP0 = new Vector3(circleA.centerX, 0, circleA.centerZ);
-    const roadP1 = new Vector3(circleA.centerX + 100, 0, circleA.centerZ);
-    const roadP2 = new Vector3(circleB.centerX, 0, circleB.centerZ + 100);
-    const roadP3 = new Vector3(circleB.centerX, 0, circleB.centerZ);
+    // ------------------------------------------------------------
+    // 1) Generate a closed loop that *alternates* left/right turns
+    //    (warped ring via harmonics -> S-bends, then CR->Bezier)
+    // ------------------------------------------------------------
+    type V2 = { x: number; z: number };
+    const v2 = (x: number, z: number): V2 => ({ x, z });
+    const add = (a: V2, b: V2) => v2(a.x + b.x, a.z + b.z);
+    const sub = (a: V2, b: V2) => v2(a.x - b.x, a.z - b.z);
+    const mul = (a: V2, s: number) => v2(a.x * s, a.z * s);
+    const len = (a: V2) => Math.hypot(a.x, a.z);
+    const clamp = (x: number, a: number, b: number) =>
+      Math.max(a, Math.min(b, x));
 
+    // Center & base radius
+    const cx = nrows * 0.5;
+    const cz = ncols * 0.5;
+    const R = Math.min(nrows, ncols) * 0.33; // ~330
+
+    // Harmonically warped ring -> produces natural S-bends
+    const PTS = 64; // polyline resolution
+    let seed = 1337;
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) | 0;
+      return (seed >>> 0) / 0xffffffff;
+    };
+    const phase1 = rand() * Math.PI * 2;
+    const phase2 = rand() * Math.PI * 2;
+
+    // Keep harmonics modest to avoid self-intersections, but enough to flip curvature sign
+    const r1 = R * 0.18; // 2nd harmonic
+    const r2 = R * 0.1; // 3rd harmonic
+    const sx = 1.0; // slight ellipse if desired (1.0 = circle)
+    const sz = 1.0;
+
+    const poly: V2[] = [];
+    for (let i = 0; i < PTS; i++) {
+      const t = (i / PTS) * Math.PI * 2.0;
+      // Base circle
+      let x = Math.cos(t) * R;
+      let z = Math.sin(t) * R;
+
+      // 2nd harmonic (phase offsets differ on x/z to force S waves)
+      x += Math.cos(2.0 * t + phase1) * r1;
+      z += Math.sin(2.0 * t + phase1 + Math.PI / 3) * r1;
+
+      // 3rd harmonic with different phase -> more variety, more inflections
+      x += Math.cos(3.0 * t + phase2) * r2;
+      z += -Math.sin(3.0 * t + phase2 + Math.PI / 5) * r2;
+
+      poly.push(v2(cx + x * sx, cz + z * sz));
+    }
+
+    // Catmull–Rom (closed) → cubic Bézier with clamped handles (limit tightness)
+    const HANDLE_SCALE = 1.0 / 6.0; // CR→Bezier base factor
+    const HANDLE_CLAMP = 0.32; // max handle = 0.32 * local segment length (curvature cap)
+
+    const curves: Array<[V2, V2, V2, V2]> = [];
+    for (let i = 0; i < PTS; i++) {
+      const P0 = poly[(i - 1 + PTS) % PTS];
+      const P1 = poly[i];
+      const P2 = poly[(i + 1) % PTS];
+      const P3 = poly[(i + 2) % PTS];
+
+      // Raw CR→Bezier
+      let H1 = mul(sub(P2, P0), HANDLE_SCALE);
+      let H2 = mul(sub(P3, P1), HANDLE_SCALE);
+
+      // Clamp handle lengths relative to adjacent spans (avoid hairpins)
+      const L1 = len(sub(P2, P1));
+      const L0 = len(sub(P1, P0));
+      const L2 = len(sub(P3, P2));
+
+      const h1Max = HANDLE_CLAMP * Math.min(L0, L1);
+      const h2Max = HANDLE_CLAMP * Math.min(L1, L2);
+
+      const h1Len = len(H1);
+      const h2Len = len(H2);
+
+      if (h1Len > 1e-6) H1 = mul(H1, clamp(h1Max / h1Len, 0.0, 1.0));
+      if (h2Len > 1e-6) H2 = mul(H2, clamp(h2Max / h2Len, 0.0, 1.0));
+
+      const B0 = P1;
+      const B1 = add(P1, H1);
+      const B2 = sub(P2, H2);
+      const B3 = P2;
+
+      curves.push([B0, B1, B2, B3]);
+    }
+
+    // Export for client ribbon (Float32Array of p0..p3 per segment in GRID x,z)
+    const roadCurves: Float32Array = (() => {
+      const out: number[] = [];
+      for (const [b0, b1, b2, b3] of curves) {
+        out.push(b0.x, b0.z, b1.x, b1.z, b2.x, b2.z, b3.x, b3.z);
+      }
+      return new Float32Array(out);
+    })();
+
+    // ------------------------------------------------------------
+    // 2) Base terrain first
+    // ------------------------------------------------------------
     for (let x = 0; x < nrows; x++) {
       for (let z = 0; z < ncols; z++) {
-        const index = x * ncols + z;
+        const idx = x * ncols + z;
 
-        let noise = noise2D(x, z);
-        let sinZ = Math.sin(z) * 0.1 + noise * 0.05;
-        let sinX = Math.sin(x) * 0.1 + noise * 0.05;
-        let currentHeight = sinX + sinZ;
+        const n = noise2D(x * noiseScale, z * noiseScale);
+        const base =
+          Math.sin(z * 0.05) * 0.3 +
+          n * 0.5 +
+          Math.sin(x * 0.05) * 0.3 +
+          n * 0.5;
 
-        // Flatten circles
-        const dxA = circleA.centerX - x;
-        const dzA = circleA.centerZ - z;
-        const distanceFromCircleA = Math.sqrt(dxA * dxA + dzA * dzA);
-
-        const dxB = circleB.centerX - x;
-        const dzB = circleB.centerZ - z;
-        const distanceFromCircleB = Math.sqrt(dxB * dxB + dzB * dzB);
-
-        if (
-          distanceFromCircleA <= circleA.radius ||
-          distanceFromCircleB <= circleB.radius
-        ) {
-          currentHeight = roadFlattenHeight;
-        } else {
-          // Flatten along Bezier road
-          const point = new Vector3(x, 0, z);
-          const distToRoad = distanceToBezier(
-            point,
-            roadP0,
-            roadP1,
-            roadP2,
-            roadP3
-          );
-          if (distToRoad <= roadWidth / 2) {
-            currentHeight = roadFlattenHeight;
-          }
-        }
-
-        heights[index] = currentHeight;
+        heights[idx] = base;
+        roadMask[idx] = 0;
       }
     }
 
+    // ------------------------------------------------------------
+    // 3) Flatten road by stamping along the curve (fast)
+    // ------------------------------------------------------------
+    const bezPoint = (b0: V2, b1: V2, b2: V2, b3: V2, t: number): V2 => {
+      const u = 1 - t;
+      const uu = u * u,
+        tt = t * t;
+      const uuu = uu * u,
+        ttt = tt * t;
+      const px =
+        b0.x * uuu + 3 * b1.x * uu * t + 3 * b2.x * u * tt + b3.x * ttt;
+      const pz =
+        b0.z * uuu + 3 * b1.z * uu * t + 3 * b2.z * u * tt + b3.z * ttt;
+      return v2(px, pz);
+    };
+
+    const stamp = (cxg: number, czg: number) => {
+      const R = roadHalf + roadFalloff + 1;
+      const x0 = Math.max(0, Math.floor(cxg - R));
+      const x1 = Math.min(nrows - 1, Math.ceil(cxg + R));
+      const z0 = Math.max(0, Math.floor(czg - R));
+      const z1 = Math.min(ncols - 1, Math.ceil(czg + R));
+
+      for (let x = x0; x <= x1; x++) {
+        for (let z = z0; z <= z1; z++) {
+          const dx = x + 0.5 - cxg;
+          const dz = z + 0.5 - czg;
+          const d = Math.hypot(dx, dz);
+          const idx = x * ncols + z;
+
+          if (d <= roadHalf) {
+            heights[idx] = roadHeight;
+            roadMask[idx] = 1;
+          } else if (d <= roadHalf + roadFalloff) {
+            const t = (d - roadHalf) / roadFalloff;
+            const s = t * t * (3 - 2 * t); // smoothstep
+            const base = heights[idx];
+            heights[idx] = roadHeight * (1 - s) + base * s;
+          }
+        }
+      }
+    };
+
+    // sample density along each cubic; balanced for perf and quality
+    const samplesPerSegment = 140;
+    for (const [b0, b1, b2, b3] of curves) {
+      for (let i = 0; i <= samplesPerSegment; i++) {
+        const t = i / samplesPerSegment;
+        const p = bezPoint(b0, b1, b2, b3, t);
+        stamp(p.x, p.z);
+      }
+    }
+
+    // ------------------------------------------------------------
+    // 4) Package terrain + physics
+    // ------------------------------------------------------------
     const scale = new Vector3(
       nrows * scaleFactor,
       2 * heightScaleFactor,
       ncols * scaleFactor
     );
 
-    const terrainData: TerrainData = {
+    const terrainData: any = {
       position,
       quaternion,
       heights,
+      roadMask, // compat
       nrows,
       ncols,
       scale,
+
+      // client ribbon inputs:
+      roadCurves,
+      asphaltHalf,
+      roadHeight,
     };
 
     this.terrains.push(terrainData);
