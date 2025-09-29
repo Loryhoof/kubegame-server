@@ -5,6 +5,8 @@ import { Quaternion, randomIntBetween } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
 import { IHoldable } from "./interfaces/IHoldable";
 import Weapon from "./Holdable/Weapon";
+import Lobby from "./Lobby";
+import { PlayerSettings } from "./Types/worldTypes";
 
 export type InputSeq = {
   seq: number;
@@ -19,6 +21,28 @@ type HoldItem = {
 export type Hand = {
   side: "left" | "right";
   item?: IHoldable;
+};
+
+export type PlayerData = {
+  velocity: Vector3;
+  health: number;
+  coins: number;
+  ammo: number;
+  id: string;
+  position: Vector3;
+  quaternion: Quaternion;
+  color: string;
+  keys: any;
+  isSitting: boolean;
+  controlledObject: { id: string } | null;
+  lastProcessedInputSeq: number;
+  nickname: string;
+  leftHand: Hand;
+  rightHand: Hand;
+  viewQuaternion: Quaternion;
+  isDead: boolean;
+  killCount: number;
+  lobbyId: string;
 };
 
 class Player {
@@ -71,23 +95,50 @@ class Player {
 
   public isDead: boolean = false;
 
+  public lobby: Lobby;
+
+  private playerSettings: PlayerSettings;
+
   constructor(
+    lobby: Lobby,
     id: string,
     position: Vector3,
     quaternion: Quaternion,
-    color: string
+    color: string,
+    playerSettings: PlayerSettings
   ) {
+    this.lobby = lobby;
     this.id = id;
     this.position = position;
     this.quaternion = quaternion;
     this.color = color;
+    this.playerSettings = playerSettings;
 
-    this.physicsObject = PhysicsManager.getInstance().createPlayerCapsule();
-
-    const pistol = new Weapon("pistol");
+    this.physicsObject = PhysicsManager.createPlayerCapsule(lobby.physicsWorld);
 
     this.leftHand = { side: "left" };
-    this.rightHand = { side: "right", item: pistol };
+    this.rightHand = { side: "right" };
+
+    this.setupSettings();
+  }
+
+  setupSettings() {
+    console.log("setup settings", this.playerSettings);
+    if (this.playerSettings.leftHand) {
+      if (this.playerSettings.leftHand == "pistol") {
+        const pistol = new Weapon("pistol");
+
+        this.leftHand.item = pistol;
+      }
+    }
+
+    if (this.playerSettings.rightHand) {
+      if (this.playerSettings.rightHand == "pistol") {
+        const pistol = new Weapon("pistol");
+
+        this.rightHand.item = pistol;
+      }
+    }
   }
 
   getHandItem(): IHoldable | null {
@@ -150,7 +201,7 @@ class Player {
     const desired = { x: this.velocity.x, y: current.y, z: this.velocity.z };
 
     // Apply movement
-    PhysicsManager.getInstance().setLinearVelocity(rb, desired);
+    PhysicsManager.setLinearVelocity(rb, desired);
 
     // Sync position
     this.setPosition(rb.translation() as Vector3);
@@ -185,7 +236,7 @@ class Player {
   }
 
   teleportTo(position: Vector3) {
-    PhysicsManager.getInstance().setTranslation(this.physicsObject, position);
+    PhysicsManager.setTranslation(this.physicsObject, position);
   }
 
   damage(amount: number) {
@@ -204,7 +255,10 @@ class Player {
   }
 
   isGrounded(): boolean {
-    return PhysicsManager.getInstance().grounded(this.physicsObject.rigidBody);
+    return PhysicsManager.grounded(
+      this.lobby.physicsWorld,
+      this.physicsObject.rigidBody
+    );
   }
 
   enterVehicle(vehicle: Vehicle) {

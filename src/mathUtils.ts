@@ -1,5 +1,7 @@
+import { readFile, readFileSync } from "fs";
 import Quaternion from "./Math/Quaternion";
 import Vector3 from "./Math/Vector3";
+import { WorldSettings } from "./Types/worldTypes";
 
 function generateUUID() {
   // RFC4122 version 4 compliant UUID generator (simple)
@@ -8,6 +10,17 @@ function generateUUID() {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+function generateShortUUID(length: number = 8): string {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    const rand = Math.floor(Math.random() * chars.length);
+    result += chars[rand];
+  }
+  return result;
 }
 
 function getVectorLength(vec: Vector3) {
@@ -253,6 +266,68 @@ function worldToGrid(
   return { gridX, gridZ };
 }
 
+function computeHitInfo(
+  camPos: Vector3,
+  worldHit: Vector3,
+  collider: any
+): {
+  distance: number;
+  hitBodyPart: "head" | "torso" | "legs";
+  bodyPartMultiplier: number;
+  falloffStart: number;
+  falloffEnd: number;
+  minFactor: number;
+} {
+  const distance = worldHit.distanceTo(camPos);
+  const colPos = collider.translation();
+  const local = {
+    x: worldHit.x - colPos.x,
+    y: worldHit.y - colPos.y,
+    z: worldHit.z - colPos.z,
+  };
+
+  // Defaults (torso)
+  let hitBodyPart: "head" | "torso" | "legs" = "torso";
+  let bodyPartMultiplier = 1.0;
+  let falloffStart = 10;
+  let falloffEnd = 50;
+  let minFactor = 0.2;
+
+  if (local.y > 0.45) {
+    hitBodyPart = "head";
+    bodyPartMultiplier = 4.0;
+    falloffStart = 20;
+    falloffEnd = 100;
+    minFactor = 0.5;
+  } else if (local.y < 0.0) {
+    hitBodyPart = "legs";
+    bodyPartMultiplier = 0.5;
+    falloffStart = 5;
+    falloffEnd = 40;
+    minFactor = 0.2;
+  }
+
+  return {
+    distance,
+    hitBodyPart,
+    bodyPartMultiplier,
+    falloffStart,
+    falloffEnd,
+    minFactor,
+  };
+}
+
+function distanceDamageFactor(
+  distance: number,
+  start: number,
+  end: number,
+  minFactor: number
+) {
+  if (distance <= start) return 1.0;
+  const t = (distance - start) / (end - start);
+  return Math.max(minFactor, 1.0 - t);
+}
+
 export {
   getYRotationQuaternion,
   applyQuaternion,
@@ -260,6 +335,7 @@ export {
   Quaternion,
   randomHex,
   generateUUID,
+  generateShortUUID,
   randomIntBetween,
   eulerToQuaternion,
   slerp,
@@ -272,4 +348,6 @@ export {
   worldToGrid,
   randomFromArray,
   extractYaw,
+  computeHitInfo,
+  distanceDamageFactor,
 };

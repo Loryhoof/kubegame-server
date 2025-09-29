@@ -68,6 +68,18 @@ export default class Vector3 {
     return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
   }
 
+  // Cross product with another vector
+  cross(vec: Vector3): this {
+    const x = this.y * vec.z - this.z * vec.y;
+    const y = this.z * vec.x - this.x * vec.z;
+    const z = this.x * vec.y - this.y * vec.x;
+
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    return this;
+  }
+
   applyQuaternion(q: { x: number; y: number; z: number; w: number }): this {
     const x = this.x,
       y = this.y,

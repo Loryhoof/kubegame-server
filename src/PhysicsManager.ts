@@ -1,6 +1,5 @@
 import * as RAPIER from "@dimforge/rapier3d-compat";
 import { Quaternion, Vector3 } from "./mathUtils";
-// import { Quaternion, Vector3 } from "./interfaces/Math";
 
 function distanceBetween(v1: Vector3, v2: Vector3): number {
   const dx = v2.x - v1.x;
@@ -23,25 +22,17 @@ export interface PhysicsObject {
 }
 
 export default class PhysicsManager {
-  public gravity: any;
-  public physicsWorld: any;
-  private static instance: PhysicsManager;
+  public static gravity: any;
+  private static physicsIsReady: boolean = false;
 
-  private physicsIsReady: boolean = false;
-
-  private constructor() {}
-
-  async init(): Promise<void> {
+  static async init(): Promise<void> {
     await RAPIER.init();
     this.physicsIsReady = true;
-
-    this.gravity = new RAPIER.Vector3(0.0, -9.81, 0.0); // - 9.81
-    this.physicsWorld = new RAPIER.World(this.gravity);
-
+    this.gravity = new RAPIER.Vector3(0.0, -9.81, 0.0);
     console.log("Rapier physics initialized");
   }
 
-  async waitForPhysicsInit(): Promise<void> {
+  static async waitForPhysicsInit(): Promise<void> {
     if (this.physicsIsReady) {
       return Promise.resolve();
     }
@@ -51,69 +42,67 @@ export default class PhysicsManager {
         if (this.physicsIsReady) {
           resolve();
         } else {
-          setTimeout(checkReady, 50); // Check again in 50ms
+          setTimeout(checkReady, 50);
         }
       };
       checkReady();
     });
   }
 
-  public static getInstance(): PhysicsManager {
-    if (!PhysicsManager.instance) {
-      PhysicsManager.instance = new PhysicsManager();
-    }
-    return PhysicsManager.instance;
-  }
-
-  isReady(): boolean {
+  static isReady(): boolean {
     return this.physicsIsReady;
   }
 
-  remove(physicsObject: PhysicsObject) {
-    this.physicsWorld.removeRigidBody(physicsObject.rigidBody);
-    this.physicsWorld.removeCollider(physicsObject.collider);
+  static createWorld(): RAPIER.World {
+    return new RAPIER.World(
+      this.gravity || new RAPIER.Vector3(0.0, -9.81, 0.0)
+    );
   }
 
-  createDynamicBox(position: Vector3, scale: Vector3): PhysicsObject {
+  static remove(world: RAPIER.World, physicsObject: PhysicsObject) {
+    world.removeRigidBody(physicsObject.rigidBody);
+    world.removeCollider(physicsObject.collider, true);
+  }
+
+  static createDynamicBox(
+    world: RAPIER.World,
+    position: Vector3,
+    scale: Vector3
+  ): PhysicsObject {
     const rbDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(
       position.x,
       position.y,
       position.z
     );
-    const rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+    const rigidBody = world.createRigidBody(rbDesc);
 
     const colDesc = RAPIER.ColliderDesc.cuboid(scale.x, scale.y, scale.z);
-    const collider = this.physicsWorld.createCollider(colDesc, rigidBody);
+    const collider = world.createCollider(colDesc, rigidBody);
 
     return { rigidBody, collider };
   }
 
-  grounded(rigidBody: RAPIER.RigidBody) {
+  static grounded(world: RAPIER.World, rigidBody: RAPIER.RigidBody) {
     const origin = rigidBody.translation();
     const ray = new RAPIER.Ray(
       { x: origin.x, y: origin.y, z: origin.z },
       { x: 0, y: -1, z: 0 }
     );
 
-    const maxToi = 1.0;
-    const solid = false;
-    let filterFlags = undefined;
-    let filterGroups = undefined;
-    let filterExcludeRigidBody = rigidBody;
-
-    let hit = this.physicsWorld.castRay(
+    let hit = world.castRay(
       ray,
-      maxToi,
-      solid,
-      filterFlags,
-      filterGroups,
-      filterExcludeRigidBody
+      1.0,
+      false,
+      undefined,
+      undefined,
+      undefined,
+      rigidBody
     );
-
     return hit != null;
   }
 
-  createFixedBox(
+  static createFixedBox(
+    world: RAPIER.World,
     position: Vector3,
     scale: Vector3,
     rotation: Quaternion = new Quaternion(0, 0, 0, 1)
@@ -126,19 +115,20 @@ export default class PhysicsManager {
         y: rotation.y,
         z: rotation.z,
       });
-    const rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+    const rigidBody = world.createRigidBody(rbDesc);
 
     const colDesc = RAPIER.ColliderDesc.cuboid(
       scale.x / 2,
       scale.y / 2,
       scale.z / 2
     );
-    const collider = this.physicsWorld.createCollider(colDesc, rigidBody);
+    const collider = world.createCollider(colDesc, rigidBody);
 
     return { rigidBody, collider };
   }
 
-  createTrimesh(
+  static createTrimesh(
+    world: RAPIER.World,
     position: Vector3,
     rotation: Quaternion,
     vertices: Float32Array,
@@ -152,48 +142,50 @@ export default class PhysicsManager {
         y: rotation.y,
         z: rotation.z,
       });
-    const rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+    const rigidBody = world.createRigidBody(rbDesc);
 
     const colDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
-
-    const collider = this.physicsWorld.createCollider(colDesc, rigidBody);
+    const collider = world.createCollider(colDesc, rigidBody);
 
     return { rigidBody, collider };
   }
 
-  createPlayerCapsule(position: Vector3 = new Vector3(0, 5, 0)): PhysicsObject {
+  static createPlayerCapsule(
+    world: RAPIER.World,
+    position: Vector3 = new Vector3(0, 5, 0)
+  ): PhysicsObject {
     let rbDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(position.x, position.y, position.z)
-      .lockRotations(); //kinematicVelocityBased
-    let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+      .lockRotations();
+    let rigidBody = world.createRigidBody(rbDesc);
 
-    let halfHeight = 0.55; // weird s
+    let halfHeight = 0.55;
     let radius = 0.275;
 
     let capsuleColDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
-    let collider = this.physicsWorld.createCollider(capsuleColDesc, rigidBody);
+    let collider = world.createCollider(capsuleColDesc, rigidBody);
 
     return { rigidBody, collider };
   }
 
-  createCar(position: Vector3): PhysicsObject {
+  static createCar(world: RAPIER.World, position: Vector3): PhysicsObject {
     let rbDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(position.x, position.y, position.z)
       .setAdditionalMass(1500);
-    let rigidBody = this.physicsWorld.createRigidBody(rbDesc);
+    let rigidBody = world.createRigidBody(rbDesc);
 
     let boxColDesc = RAPIER.ColliderDesc.cuboid(1, 0.25, 2);
-    let collider = this.physicsWorld.createCollider(boxColDesc, rigidBody);
+    let collider = world.createCollider(boxColDesc, rigidBody);
 
     return { rigidBody, collider };
   }
 
-  createCharacterController() {
-    const controller = this.physicsWorld.createCharacterController(0.01);
-    return controller;
+  static createCharacterController(world: RAPIER.World) {
+    return world.createCharacterController(0.01);
   }
 
-  createHeightfield(
+  static createHeightfield(
+    world: RAPIER.World,
     position: Vector3,
     rotation: Quaternion,
     heights: Float32Array,
@@ -207,7 +199,7 @@ export default class PhysicsManager {
       heights,
       scale
     );
-    const collider = this.physicsWorld.createCollider(colliderDesc);
+    const collider = world.createCollider(colliderDesc);
 
     const rbDesc = RAPIER.RigidBodyDesc.fixed()
       .setTranslation(position.x, position.y, position.z)
@@ -217,23 +209,24 @@ export default class PhysicsManager {
         y: rotation.y,
         z: rotation.z,
       });
-    const rigidbody = this.physicsWorld.createRigidBody(rbDesc);
+    const rigidbody = world.createRigidBody(rbDesc);
 
     return { rigidbody, collider };
   }
 
-  setTranslation(physicsObject: PhysicsObject, vec: Vector3) {
+  static setTranslation(physicsObject: PhysicsObject, vec: Vector3) {
     physicsObject.rigidBody.setTranslation(vec, true);
   }
 
-  intersectShape(
+  static intersectShape(
+    world: RAPIER.World,
     shapePos: any,
     shapeRot: any,
     shape: any,
     filterExcludeCollider: any,
     filterExcludeRigidBody: any
   ) {
-    return (this.physicsWorld as RAPIER.World).intersectionWithShape(
+    return world.intersectionWithShape(
       shapePos,
       shapeRot,
       shape,
@@ -244,77 +237,58 @@ export default class PhysicsManager {
     );
   }
 
-  getNearestColliderHitPosition(physicsObject: PhysicsObject) {
+  static getNearestColliderHitPosition(
+    world: RAPIER.World,
+    physicsObject: PhysicsObject
+  ) {
     let shapeRot = { w: 1.0, x: 0.0, y: 0.0, z: 0.0 };
     let shape = new RAPIER.Cuboid(1.0, 1.0, 1.0);
-    let targetDistance = 0.0;
-    let maxToi = 1.0;
-    // Optional parameters:
-    let stopAtPenetration = true;
-    let filterFlags = RAPIER.QueryFilterFlags.EXCLUDE_DYNAMIC;
-    let filterGroups = 0x000b0001;
-    let filterExcludeCollider = physicsObject.collider;
-    let filterExcludeRigidBody = physicsObject.rigidBody;
 
     let pos = physicsObject.rigidBody.translation();
     pos.y = pos.y + 1;
 
-    let hit = PhysicsManager.getInstance().physicsWorld.castShape(
+    let hit = world.castShape(
       pos,
       shapeRot,
-      { x: 0, y: 0, z: 1 }, //physicsObject.rigidBody.linvel(),
+      { x: 0, y: 0, z: 1 },
       shape,
-      targetDistance,
-      maxToi,
-      stopAtPenetration,
-      undefined, // "Filterflags"
-      filterGroups,
-      filterExcludeCollider,
-      filterExcludeRigidBody
+      0.0,
+      1.0,
+      true,
+      undefined,
+      0x000b0001,
+      physicsObject.collider,
+      physicsObject.rigidBody
     );
 
-    if (hit != null) {
-      return true;
-    } else {
-      return false;
-    }
-
-    // if (hit != null) {
-    //   const collider = hit.collider;
-    //   const rb = collider.parent();
-    //   if (rb) {
-    //     const pos = rb.translation(); // world position of the object
-    //     return pos;
-    //   }
-    // }
-
-    return null;
+    return hit != null;
   }
 
-  moveCharacter(
+  static moveCharacter(
     controller: any,
     collider: any,
     rigidBody: any,
     translation: any | Vector3
   ) {
     controller.computeColliderMovement(collider, translation);
-
     let correctedMovement = controller.computedMovement();
-
-    this.setLinearVelocity(rigidBody, correctedMovement);
+    rigidBody.setLinvel(correctedMovement, true);
   }
 
-  raycast(origin: Vector3, dir: Vector3, rb: any, toi: number = 4) {
+  static raycast(
+    world: RAPIER.World,
+    origin: Vector3,
+    dir: Vector3,
+    rb: any,
+    toi: number = 4
+  ) {
     ray.origin = origin;
     ray.dir = dir;
 
-    let maxToi = toi;
-    let solid = false;
-
-    let hit = (this.physicsWorld as RAPIER.World).castRay(
+    let hit = world.castRay(
       ray,
-      maxToi,
-      solid,
+      toi,
+      false,
       undefined,
       undefined,
       undefined,
@@ -328,11 +302,17 @@ export default class PhysicsManager {
     return null;
   }
 
-  raycastFull(origin: Vector3, dir: Vector3, rb: any, toi: number = 4) {
+  static raycastFull(
+    world: RAPIER.World,
+    origin: Vector3,
+    dir: Vector3,
+    rb: any,
+    toi: number = 4
+  ) {
     ray.origin = origin;
     ray.dir = dir;
 
-    const hit = this.physicsWorld.castRay(
+    const hit = world.castRay(
       ray,
       toi,
       false,
@@ -344,33 +324,21 @@ export default class PhysicsManager {
 
     let hitPos: Vector3 | null = null;
     if (hit) {
-      const point = ray.pointAt(hit.timeOfImpact); // Rapier Vec3
-      hitPos = new Vector3(point.x, point.y, point.z); // Convert to THREE vec
+      const point = ray.pointAt(hit.timeOfImpact);
+      hitPos = new Vector3(point.x, point.y, point.z);
     }
 
     return { ray, hit, hitPos };
   }
 
-  // getPlayerFromCollider(collider: any) {
-  //   if (!collider) return;
-
-  //   // this.physicsWorld.colliders.forEach((col: any) => {
-  //   //   console.log(collider.handle, col.handle);
-  //   //   if (collider.handle == col.handle) {
-  //   //     console.log("Found it");
-  //   //   }
-  //   // });
-  // }
-
-  setLinearVelocity(rigidBody: any, velocity: any | Vector3) {
+  static setLinearVelocity(rigidBody: any, velocity: any | Vector3) {
     rigidBody.setLinvel(velocity, true);
   }
 
-  update() {
+  static update(world: RAPIER.World) {
     if (!this.physicsIsReady) {
       return;
     }
-
-    (this.physicsWorld as RAPIER.World).step();
+    world.step();
   }
 }

@@ -4,6 +4,7 @@ import { generateUUID, Quaternion, randomFromArray } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
 import World from "./World";
 import Player from "./Player";
+import Lobby from "./Lobby";
 
 class NPC {
   public id: string;
@@ -46,20 +47,26 @@ class NPC {
 
   public isDead: boolean = false;
 
+  public lobby: Lobby;
+
   constructor(
+    lobby: Lobby,
     world: World,
     position: Vector3,
     quaternion: Quaternion,
     color: string
   ) {
+    this.lobby = lobby;
     this.world = world;
     this.id = generateUUID();
     this.position = position;
     this.quaternion = quaternion;
     this.color = color;
 
-    this.physicsObject =
-      PhysicsManager.getInstance().createPlayerCapsule(position);
+    this.physicsObject = PhysicsManager.createPlayerCapsule(
+      this.lobby.physicsWorld,
+      position
+    );
   }
 
   updateAI(delta: number) {
@@ -123,10 +130,9 @@ class NPC {
 
     this.physicsObject.rigidBody.sleep();
 
-    PhysicsManager.getInstance().physicsWorld.removeCollider(
-      this.physicsObject.collider
-    );
+    // PhysicsManager.physicsWorld.removeCollider(this.physicsObject.collider);
 
+    this.lobby.physicsWorld.removeCollider(this.physicsObject.collider, true);
     // PhysicsManager.getInstance().remove(this.physicsObject);
 
     this.world.removeNPC(this, 2000);
@@ -158,7 +164,7 @@ class NPC {
     displacement.y = linVel.y;
 
     // Apply movement
-    PhysicsManager.getInstance().setLinearVelocity(
+    PhysicsManager.setLinearVelocity(
       this.physicsObject.rigidBody,
       displacement
     );
@@ -180,7 +186,7 @@ class NPC {
   }
 
   teleportTo(position: Vector3) {
-    PhysicsManager.getInstance().setTranslation(this.physicsObject, position);
+    PhysicsManager.setTranslation(this.physicsObject, position);
   }
 
   damage(amount: number) {
@@ -197,7 +203,10 @@ class NPC {
   // }
 
   isGrounded(): boolean {
-    return PhysicsManager.getInstance().grounded(this.physicsObject.rigidBody);
+    return PhysicsManager.grounded(
+      this.lobby.physicsWorld,
+      this.physicsObject.rigidBody
+    );
   }
 
   jump() {

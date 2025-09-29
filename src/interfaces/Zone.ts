@@ -4,7 +4,8 @@ import Player from "../Player";
 export type TriggerAction =
   | { type: "heal"; amount: number }
   | { type: "damage"; amount: number }
-  | { type: "pickup"; itemId: string; amount: number };
+  | { type: "pickup"; itemId: string; amount: number }
+  | { type: "passive" };
 
 export default interface Zone {
   id: string;

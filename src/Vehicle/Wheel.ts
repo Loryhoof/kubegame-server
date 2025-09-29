@@ -70,8 +70,6 @@ export default class Wheel {
   }
 
   update(delta: number) {
-    const phy = PhysicsManager.getInstance();
-
     // Wheel world rotation
     const bodyQuat = this.parent.quaternion.clone();
     const wheelWorldPos = this.parent.position
@@ -86,7 +84,8 @@ export default class Wheel {
 
     // Suspension raycast
     const worldDown = DOWN.clone().applyQuaternion(wheelQuat);
-    const rayHit = phy.raycastFull(
+    const rayHit = PhysicsManager.raycastFull(
+      this.parent.lobby.physicsWorld,
       wheelWorldPos,
       worldDown,
       this.parent.physicsObject.rigidBody,

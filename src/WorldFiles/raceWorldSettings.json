@@ -1,0 +1,17 @@
+{
+  "minigame": {
+    "type": "race"
+  },
+  "playerSettings": {
+    "controlledObject": true
+  },
+  "gameObjects": [
+    {
+      "type": "box",
+      "name": "ground",
+      "position": { "x": 0, "y": -0.5, "z": 0 },
+      "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 5000, "y": 0.1, "z": 5000 }
+    }
+  ]
+}

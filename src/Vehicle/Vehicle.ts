@@ -4,6 +4,7 @@ import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import Player from "../Player";
 import World from "../World";
 import Wheel from "./Wheel";
+import Lobby from "../Lobby";
 
 const INACTIVE_TIME_LIMIT = 10; // seconds
 
@@ -32,7 +33,7 @@ export default class Vehicle {
 
   public seats: Seat[] = [];
   public lastTimeSinceOccupied: number;
-  private world: World;
+  public lobby: Lobby;
 
   // sounds
   public hornPlaying: boolean = false;
@@ -54,11 +55,14 @@ export default class Vehicle {
 
   private failedStunt: boolean = false;
 
-  constructor(world: World, position: Vector3) {
-    this.world = world;
+  constructor(lobby: Lobby, position: Vector3) {
+    this.lobby = lobby;
     this.position = position;
 
-    this.physicsObject = PhysicsManager.getInstance().createCar(position);
+    this.physicsObject = PhysicsManager.createCar(
+      this.lobby.physicsWorld,
+      position
+    );
 
     this.wheels = [
       new Wheel(
@@ -226,7 +230,7 @@ export default class Vehicle {
       }
     });
     this.hornPlaying = false;
-    this.world.removeVehicle(this);
+    this.lobby.gameWorld.removeVehicle(this);
   }
 
   getSpeed() {
@@ -238,11 +242,12 @@ export default class Vehicle {
   }
 
   handleForeignCollision() {
-    const phyWorld = PhysicsManager.getInstance().physicsWorld as RAPIER.World;
+    const phyWorld = this.lobby.physicsWorld;
     const speed = this.getSpeed();
 
     phyWorld.contactPairsWith(this.physicsObject.collider, (otherCollider) => {
-      const foundPlayer = this.world.getPlayerFromCollider(otherCollider);
+      const foundPlayer =
+        this.lobby.gameWorld.getPlayerFromCollider(otherCollider);
       if (!foundPlayer || foundPlayer == this.getDriver()) return;
 
       const otherRb = otherCollider.parent();
@@ -284,7 +289,11 @@ export default class Vehicle {
   }
 
   teleportTo(position: Vector3) {
-    PhysicsManager.getInstance().setTranslation(this.physicsObject, position);
+    this.physicsObject.rigidBody.setRotation(new Quaternion(), true);
+    this.physicsObject.rigidBody.setLinvel(new Vector3(0, 0, 0), true);
+    this.physicsObject.rigidBody.setAngvel(new Vector3(0, 0, 0), true);
+
+    PhysicsManager.setTranslation(this.physicsObject, position);
   }
 
   update(delta: number) {
@@ -334,7 +343,7 @@ export default class Vehicle {
 
         driver?.give("coin", 100);
 
-        this.world.createServerNotification({
+        this.lobby.gameWorld.createServerNotification({
           recipient: driver?.id ?? "",
           type: "achievement",
           content: "Stunt completed! +100 coins!",

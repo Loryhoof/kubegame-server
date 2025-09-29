@@ -1,3 +1,4 @@
+import Lobby from "../Lobby";
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import WorldShape, { WorldShapeType } from "./WorldShape";
@@ -10,18 +11,25 @@ export default class Box implements WorldShape {
   public position: Vector3;
   public quaternion: Quaternion;
   public color: string;
-  public physicsObject: PhysicsObject;
+  public physicsObject: PhysicsObject | null = null;
 
   public readonly type: WorldShapeType = "box";
 
+  public lobby: Lobby;
+
+  public solid: boolean = true;
+
   constructor(
+    lobby: Lobby,
     width: number,
     height: number,
     depth: number,
     position: Vector3,
     quaternion: Quaternion,
-    color: string
+    color: string,
+    solid: boolean = true
   ) {
+    this.lobby = lobby;
     this.id = generateUUID();
     this.width = width;
     this.height = height;
@@ -29,11 +37,15 @@ export default class Box implements WorldShape {
     this.position = position;
     this.quaternion = quaternion;
     this.color = color;
+    this.solid = solid;
 
-    this.physicsObject = PhysicsManager.getInstance().createFixedBox(
-      position,
-      new Vector3(width, height, depth),
-      this.quaternion
-    );
+    if (this.solid) {
+      this.physicsObject = PhysicsManager.createFixedBox(
+        this.lobby.physicsWorld,
+        position,
+        new Vector3(width, height, depth),
+        this.quaternion
+      );
+    }
   }
 }

@@ -1,3 +1,4 @@
+import Lobby from "../Lobby";
 import { generateUUID, Quaternion, Vector3 } from "../mathUtils";
 import PhysicsManager, { PhysicsObject } from "../PhysicsManager";
 import WorldShape, { WorldShapeType } from "./WorldShape";
@@ -11,15 +12,19 @@ export default class Trimesh implements WorldShape {
   public indices: Uint16Array;
   public modelName: string;
 
+  public lobby: Lobby;
+
   public readonly type: WorldShapeType = "trimesh";
 
   constructor(
+    lobby: Lobby,
     position: Vector3,
     quaternion: Quaternion,
     vertices: any,
     indices: any,
     modelName: string
   ) {
+    this.lobby = lobby;
     this.id = generateUUID();
     this.position = position;
     this.quaternion = quaternion;
@@ -28,7 +33,8 @@ export default class Trimesh implements WorldShape {
     this.vertices = vertices;
     this.indices = indices;
 
-    this.physicsObject = PhysicsManager.getInstance().createTrimesh(
+    this.physicsObject = PhysicsManager.createTrimesh(
+      this.lobby.physicsWorld,
       this.position,
       this.quaternion,
       this.vertices,

@@ -1,3 +1,6 @@
+import { Quaternion, Vector3 } from "./mathUtils";
+import { WorldSettings } from "./Types/worldTypes";
+
 export const speedFactor = 0.05;
 export const serverHz = 30;
 

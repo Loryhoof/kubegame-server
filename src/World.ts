@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import Zone from "./interfaces/Zone";
 import {
   distanceToBezier,
+  generateUUID,
   Quaternion,
   randomHex,
   randomIntBetween,
@@ -19,25 +20,22 @@ import Vehicle from "./Vehicle/Vehicle";
 
 import { createNoise2D } from "simplex-noise";
 import path from "path";
-import { readdir, readdirSync, readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import Trimesh from "./Shapes/Trimesh";
 import NPC from "./NPC";
-import { ServerNotification } from ".";
+import Lobby from "./Lobby";
+import { ServerNotification } from "./server";
+import { TerrainData, WorldSettings } from "./Types/worldTypes";
+import TriggerZone from "./Entities/TriggerZone";
+import Race from "./Minigames/Race";
+import { start } from "repl";
 
 const zoneSpawnLimit: number = 10;
-
-export type TerrainData = {
-  position: Vector3;
-  quaternion: Quaternion;
-  heights: Float32Array;
-  nrows: number;
-  ncols: number;
-  scale: Vector3;
-};
 
 type ObjectMapType = { vertices: any; indices: any };
 
 class World {
+  public id: string;
   private io: Server;
   private players: Map<string, Player> = new Map();
   private zones: Zone[] = [];
@@ -50,15 +48,121 @@ class World {
 
   private objectMap: Map<string, ObjectMapType>;
 
-  constructor(io: Server) {
+  public lobby: Lobby;
+
+  public worldSettings: WorldSettings;
+
+  private spawnerIntervals: NodeJS.Timeout[] = [];
+
+  private minigame: Race | null = null;
+
+  constructor(lobby: Lobby, io: Server, worldSettings: WorldSettings) {
+    this.worldSettings = worldSettings;
+
+    this.lobby = lobby;
+    this.id = generateUUID();
+
     this.objectMap = this.readObjects();
     this.io = io;
     this.init();
   }
   init() {
-    const physics = PhysicsManager.getInstance();
+    this.worldSettings.gameObjects.forEach((object) => {
+      switch (object.type) {
+        case "trimesh":
+          const o = new Trimesh(
+            this.lobby,
+            object.position,
+            object.quaternion,
+            this.objectMap.get(object.name)?.vertices,
+            this.objectMap.get(object.name)?.indices,
+            object.name
+          );
+          this.entities.push(o);
+          break;
 
-    physics.createFixedBox(new Vector3(0, -0.5, 0), new Vector3(500, 0.1, 500));
+        case "box":
+          PhysicsManager.createFixedBox(
+            this.lobby.physicsWorld,
+            object.position,
+            object.scale
+          );
+
+          break;
+
+        case "npc":
+          const npc = new NPC(
+            this.lobby,
+            this,
+            new Vector3(0, 5, 0),
+            new Quaternion(),
+            randomHex()
+          );
+          this.npcs.push(npc);
+          break;
+
+        case "car":
+          const car = new Vehicle(this.lobby, object.position);
+          this.vehicles.push(car);
+          break;
+
+        case "spawner":
+          if (object.spawnerType == "coin") {
+            const intervalId = setInterval(() => {
+              if (this.interactables.length >= object.maxNumSpawn) return;
+
+              let pickup = new Pickup(
+                new Vector3(
+                  randomIntBetween(0, 40),
+                  0,
+                  randomIntBetween(0, 40)
+                ),
+                new Quaternion(0, 0, 0, 1),
+                "coin",
+                randomIntBetween(5, 15),
+                () => this.removeInteractable(pickup)
+              );
+
+              this.interactables.push(pickup);
+              this.io.to(this.lobby.id).emit("interactableCreated", pickup);
+            }, object.delay);
+
+            this.spawnerIntervals.push(intervalId); // ✅ store it
+          }
+
+          if (object.spawnerType == "npc") {
+            const intervalId = setInterval(() => {
+              if (this.npcs.length >= object.maxNumSpawn) return;
+
+              this.addNPC(
+                new Vector3(
+                  randomIntBetween(-50, 50),
+                  5,
+                  randomIntBetween(-50, 50)
+                )
+              );
+            }, object.delay);
+
+            this.spawnerIntervals.push(intervalId); // ✅ store it
+          }
+          break;
+      }
+    });
+
+    if (this.worldSettings.minigame) {
+      if (this.worldSettings.minigame.type == "race") {
+        this.minigame = new Race(this);
+        this.minigame.start();
+      }
+    }
+
+    // const physics = PhysicsManager.getInstance();
+
+    // PhysicsManager.createFixedBox(
+    //   this.lobby.physicsWorld,
+    //   new Vector3(0, -0.5, 0),
+    //   new Vector3(500, 0.1, 500)
+    // );
 
     // const ground = new Box(
     //   500,
@@ -71,135 +175,89 @@ class World {
     // this.entities.push(ground);
     // car test
 
-    const npc = new NPC(
-      this,
-      new Vector3(0, 5, 0),
-      new Quaternion(),
-      randomHex()
-    );
-
-    this.npcs.push(npc);
-
-    const ramp = new Trimesh(
-      new Vector3(40, -0.5, 10),
-      new Quaternion(),
-      this.objectMap.get("ramp")?.vertices,
-      this.objectMap.get("ramp")?.indices,
-      "ramp"
-    );
-
-    const ramp2 = new Trimesh(
-      new Vector3(80, -0.5, 10),
-      new Quaternion(),
-      this.objectMap.get("ramp")?.vertices,
-      this.objectMap.get("ramp")?.indices,
-      "ramp"
-    );
-
-    const ramp3 = new Trimesh(
-      new Vector3(40, -0.5, 80),
-      new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
-      this.objectMap.get("ramp")?.vertices,
-      this.objectMap.get("ramp")?.indices,
-      "ramp"
-    );
-
-    const ramp4 = new Trimesh(
-      new Vector3(80, -0.5, 80),
-      new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
-      this.objectMap.get("ramp")?.vertices,
-      this.objectMap.get("ramp")?.indices,
-      "ramp"
-    );
-
-    this.entities.push(ramp, ramp2, ramp3, ramp4);
-
-    const car = new Vehicle(this, new Vector3(-20, 10, 10));
-    this.vehicles.push(car);
-
-    const car2 = new Vehicle(this, new Vector3(-20, 5, 20));
-    this.vehicles.push(car2);
-
-    // const brige = new Box(
-    //   6,
-    //   0.75,
-    //   33,
-    //   new Vector3(62, 0, 28),
-    //   new Quaternion().setFromEuler(0, Math.PI / 2, 0),
-    //   "#383838"
-    // );
-    // this.entities.push(brige);
-    // const bridge = new THREE.Mesh(
-    //   new THREE.BoxGeometry(6, 0.5, 30),
-    //   new THREE.MeshStandardMaterial({ color: 0x383838 })
-    // );
-    // bridge.position.set(60, 0, 28);
-    // bridge.rotation.y = Math.PI / 2;
-
-    // this.scene.add(bridge);
-
-    // const box = new Box(
-    //   5,
-    //   5,
-    //   5,
-    //   new Vector3(0, 0, 0),
+    // const npc = new NPC(
+    //   this.lobby,
+    //   this,
+    //   new Vector3(0, 5, 0),
     //   new Quaternion(),
-    //   "#0000ff"
+    //   randomHex()
     // );
 
-    // const box2 = new Box(
-    //   5,
-    //   3,
-    //   5,
-    //   new Vector3(5, 0, 0),
+    // this.npcs.push(npc);
+
+    // const ramp = new Trimesh(
+    //   this.lobby,
+
+    //   new Vector3(40, -0.5, 10),
     //   new Quaternion(),
-    //   "#00ff00"
+    //   this.objectMap.get("ramp")?.vertices,
+    //   this.objectMap.get("ramp")?.indices,
+    //   "ramp"
     // );
 
-    // const box3 = new Box(
-    //   5,
-    //   1.25,
-    //   5,
-    //   new Vector3(10, 0, 0),
+    // const ramp2 = new Trimesh(
+    //   this.lobby,
+
+    //   new Vector3(80, -0.5, 10),
     //   new Quaternion(),
-    //   "#ff00ff"
+    //   this.objectMap.get("ramp")?.vertices,
+    //   this.objectMap.get("ramp")?.indices,
+    //   "ramp"
     // );
 
-    // const box4 = new Box(
-    //   5,
-    //   0.5,
-    //   5,
-    //   new Vector3(30, 0.5, 20),
-    //   new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 6),
-    //   "#0000ff"
+    // const ramp3 = new Trimesh(
+    //   this.lobby,
+
+    //   new Vector3(40, -0.5, 80),
+    //   new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+    //   this.objectMap.get("ramp")?.vertices,
+    //   this.objectMap.get("ramp")?.indices,
+    //   "ramp"
     // );
+
+    // const ramp4 = new Trimesh(
+    //   this.lobby,
+    //   new Vector3(80, -0.5, 80),
+    //   new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+    //   this.objectMap.get("ramp")?.vertices,
+    //   this.objectMap.get("ramp")?.indices,
+    //   "ramp"
+    // );
+
+    // this.entities.push(ramp, ramp2, ramp3, ramp4);
+
+    // const car = new Vehicle(this.lobby, new Vector3(-20, 10, 10));
+    // this.vehicles.push(car);
+
+    // const car2 = new Vehicle(this.lobby, new Vector3(-20, 5, 20));
+    // this.vehicles.push(car2);
 
     //this.createTerrain();
 
-    setInterval(() => {
-      if (this.interactables.length >= 10) return;
+    // setInterval(() => {
+    //   if (this.interactables.length >= 10) return;
 
-      let pickup = new Pickup(
-        new Vector3(randomIntBetween(0, 40), 0, randomIntBetween(0, 40)),
-        new Quaternion(0, 0, 0, 1),
-        "coin",
-        randomIntBetween(5, 15),
-        () => {
-          this.removeInteractable(pickup);
-        }
-      );
+    //   let pickup = new Pickup(
+    //     new Vector3(randomIntBetween(0, 40), 0, randomIntBetween(0, 40)),
+    //     new Quaternion(0, 0, 0, 1),
+    //     "coin",
+    //     randomIntBetween(5, 15),
+    //     () => {
+    //       this.removeInteractable(pickup);
+    //     }
+    //   );
 
-      this.interactables.push(pickup);
-      this.io.emit("interactableCreated", pickup);
-    }, 5000);
+    //   this.interactables.push(pickup);
+    //   this.io.emit("interactableCreated", pickup);
+    // }, 5000);
 
-    setInterval(() => {
-      if (this.npcs.length > 0) return;
+    // setInterval(() => {
+    //   if (this.npcs.length > 0) return;
 
-      this.addNPC(
-        new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
-      );
-    }, 1000);
+    //   this.addNPC(
+    //     new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
+    //   );
+    // }, 1000);
 
     // this.entities.push(box, box2, box3, box4);
     //this.interactables.push(interactable, interactable2, interactable3);
@@ -228,22 +286,36 @@ class World {
     // }, 20000);
   }
 
+  // restartMinigame() {
+  //   if (this.minigame) this.minigame.restart();
+  //   // this.minigame = new Race(this);
+
+  //   // this.players.forEach((player) => {
+  //   //   this.minigame?.addPlayer(player);
+  //   // });
+
+  //   // this.minigame.start();
+  // }
+
   registerHit(
     position: Vector3,
     hitPlayer: string | null = null,
     hitBodyPart: string | null = null
   ) {
-    this.io.emit("register-hit", {
+    this.io.to(this.lobby.id).emit("register-hit", {
       position: position,
       hitPlayer: hitPlayer,
       hitBodyPart: hitBodyPart,
     });
   }
+  getIO(): Server {
+    return this.io;
+  }
   createServerNotification(notification: ServerNotification) {
-    this.io.emit("server-notification", notification);
+    this.io.to(this.lobby.id).emit("server-notification", notification);
   }
   createHitmarker(position: Vector3) {
-    this.io.emit("create-hitmarker", { position: position });
+    this.io.to(this.lobby.id).emit("create-hitmarker", { position: position });
   }
   readObjects() {
     const dirPath = path.join(process.cwd(), "src/Objects");
@@ -362,7 +434,8 @@ class World {
 
     this.terrains.push(terrainData);
 
-    PhysicsManager.getInstance().createHeightfield(
+    PhysicsManager.createHeightfield(
+      this.lobby.physicsWorld,
       position,
       quaternion,
       heights,
@@ -379,7 +452,7 @@ class World {
       if (player.health <= 0) {
         if (!player.isDead) {
           player.die();
-          this.io.emit("player-death", player.id);
+          this.io.to(this.lobby.id).emit("player-death", player.id);
         }
       }
 
@@ -399,6 +472,7 @@ class World {
         this.scanInteractables(player);
       }
     }
+
     this.vehicles.forEach((vehicle) => {
       vehicle.update(delta);
     });
@@ -407,6 +481,10 @@ class World {
     this.npcs.forEach((npc) => {
       npc.update(delta);
     });
+
+    if (this.minigame) {
+      this.minigame.update();
+    }
 
     // this.entities.forEach((entity) => {
     //   entity.update();
@@ -479,6 +557,7 @@ class World {
       vehicles: this.vehicles,
       terrains: this.terrains,
       npcs: this.npcs,
+      zones: this.zones,
     };
   }
 
@@ -504,8 +583,8 @@ class World {
     return this.players.get(id) ?? null;
   }
 
-  addVehicle(position: Vector3, player?: Player) {
-    const car = new Vehicle(this, position);
+  addVehicle(position: Vector3, player?: Player): Vehicle {
+    const car = new Vehicle(this.lobby, position);
     this.vehicles.push(car);
 
     const data = {
@@ -525,13 +604,22 @@ class World {
       })),
     };
 
-    this.io.emit("addVehicle", data);
+    this.io.to(this.lobby.id).emit("addVehicle", data);
 
     player?.enterVehicle(car);
+
+    return car;
   }
 
   addNPC(position: Vector3) {
-    const npc = new NPC(this, position, new Quaternion(), randomHex());
+    console.log("ADDING NPC");
+    const npc = new NPC(
+      this.lobby,
+      this,
+      position,
+      new Quaternion(),
+      randomHex()
+    );
 
     this.npcs.push(npc);
 
@@ -547,26 +635,28 @@ class World {
       isSitting: npc.isSitting,
     };
 
-    this.io.emit("addNPC", data);
+    this.io.to(this.lobby.id).emit("addNPC", data);
   }
 
   removeVehicle(vehicle: Vehicle) {
     const uuid = vehicle.id;
 
-    PhysicsManager.getInstance().remove(vehicle.physicsObject);
+    PhysicsManager.remove(this.lobby.physicsWorld, vehicle.physicsObject);
 
     this.vehicles = this.vehicles.filter((vehicle) => vehicle.id !== uuid);
 
-    this.io.emit("vehicleRemoved", uuid);
+    console.log("removnig vehicle");
+
+    this.io.to(this.lobby.id).emit("vehicleRemoved", uuid);
   }
 
   removeNPC(npc: NPC, delay: number = 0) {
     const uuid = npc.id;
 
     setTimeout(() => {
-      PhysicsManager.getInstance().remove(npc.physicsObject);
+      PhysicsManager.remove(this.lobby.physicsWorld, npc.physicsObject);
       this.npcs = this.npcs.filter((n) => n.id !== uuid);
-      this.io.emit("npcRemoved", uuid);
+      this.io.to(this.lobby.id).emit("npcRemoved", uuid);
     }, delay);
 
     // setTimeout(() => {
@@ -581,13 +671,31 @@ class World {
 
   addPlayer(networkId: string) {
     const newPlayer = new Player(
+      this.lobby,
       networkId,
       new Vector3(0, 0, 0),
       new Quaternion(0, 0, 0, 1),
-      randomHex()
+      randomHex(),
+      this.worldSettings.playerSettings
     );
 
     this.players.set(networkId, newPlayer);
+
+    if (this.worldSettings.playerSettings.controlledObject) {
+      this.addVehicle(new Vector3(0, 5, 0), newPlayer);
+    }
+
+    if (this.minigame) {
+      this.minigame.addPlayer(newPlayer);
+    }
+
+    // if (this.minigame) {
+    //   this.minigame.addPlayer(newPlayer);
+
+    //   const startPosition = this.minigame.getStartPosition();
+    //   // newPlayer.teleportTo(startPosition);
+    //   newPlayer.controlledObject?.teleportTo(startPosition);
+    // }
   }
   removePlayer(networkId: string) {
     const player = this.players.get(networkId);
@@ -596,18 +704,25 @@ class World {
 
     if (!player) return;
 
+    if (this.minigame) this.minigame.removePlayer(player);
+
     if (player.controlledObject) {
       player.exitVehicle();
     }
 
-    PhysicsManager.getInstance().remove(player.physicsObject);
+    PhysicsManager.remove(this.lobby.physicsWorld, player.physicsObject);
 
     this.players.delete(networkId);
+  }
+
+  addZone(z: Zone) {
+    this.zones.push(z);
+    this.io.to(this.lobby.id).emit("zoneCreated", z);
   }
   removeZone(zone: Zone) {
     const uuid = zone.id;
     this.zones = this.zones.filter((zone) => zone.id !== uuid);
-    this.io.emit("zoneRemoved", uuid);
+    this.io.to(this.lobby.id).emit("zoneRemoved", uuid);
   }
   removeInteractable(interactable: Interactable) {
     const uuid = interactable.id;
@@ -633,7 +748,12 @@ class World {
       (interactable) => interactable.id !== uuid
     );
 
-    this.io.emit("interactableRemoved", payload);
+    this.io.to(this.lobby.id).emit("interactableRemoved", payload);
+  }
+
+  public cleanup(): void {
+    this.spawnerIntervals.forEach((intervalId) => clearInterval(intervalId));
+    this.spawnerIntervals = [];
   }
 }
 
