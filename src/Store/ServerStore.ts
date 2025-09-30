@@ -7,6 +7,7 @@ type RaceLeaderboardEntry = {
 export default class ServerStore {
   private static instance: ServerStore;
 
+  private serverStartTime: number = -Infinity;
   private raceLeaderboard: RaceLeaderboardEntry[] = [];
 
   private constructor() {}
@@ -44,5 +45,13 @@ export default class ServerStore {
 
   public getLeaderboard(): RaceLeaderboardEntry[] {
     return this.raceLeaderboard;
+  }
+
+  public setServerStartTime(n: number) {
+    this.serverStartTime = n;
+  }
+
+  public getServerUptime(): number {
+    return Date.now() - this.serverStartTime;
   }
 }

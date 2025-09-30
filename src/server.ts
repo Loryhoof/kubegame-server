@@ -9,6 +9,7 @@ import LobbyManager from "./LobbyManager";
 import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
 import { attachSocketHandlers } from "./socket/handlers";
+import ServerStore from "./Store/ServerStore";
 
 export type ServerNotification = {
   recipient: string;
@@ -85,6 +86,8 @@ async function init() {
   lobbyManager.init();
   startTick();
   startPhysicsLoop();
+
+  ServerStore.getInstance().setServerStartTime(Date.now());
 }
 
 init();

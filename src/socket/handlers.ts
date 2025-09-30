@@ -19,6 +19,7 @@ import { ServerNotification } from "../server";
 import Lobby from "../Lobby";
 import RAPIER from "@dimforge/rapier3d-compat";
 import LobbyManager from "../LobbyManager";
+import ServerStore from "../Store/ServerStore";
 
 type ChatMessage = { id: string; nickname: string; text: string };
 type PlayerInput = {
@@ -308,6 +309,7 @@ export function attachSocketHandlers(
 
     if (command == "server") {
       const data = {
+        uptime: ServerStore.getInstance().getServerUptime(),
         hub: {
           players: lobbyManager.hubLobby?.players.size,
         },
