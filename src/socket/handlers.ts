@@ -256,8 +256,10 @@ export function attachSocketHandlers(
 
     if (!player) return;
 
-    const lobby = lobbyManager.createMinigameLobby("race", world.lobby.id);
-    lobbyManager.transferPlayer(player.lobby, lobby, player, socket);
+    const newLobby = lobbyManager.createMinigameLobby("race", world.lobby.id);
+    // lobbyManager.transferPlayer(player.lobby, lobby, player, socket);
+
+    lobbyManager.migrate(player.lobby, newLobby);
   });
 
   socket.on("minigame-exit", () => {

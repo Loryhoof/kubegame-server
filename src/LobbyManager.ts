@@ -93,6 +93,31 @@ export default class LobbyManager {
     return this.minigameLobbies.find((lobby) => lobby.id == uuid);
   }
 
+  migrate(from: Lobby, to: Lobby) {
+    // Copy IDs into an array to avoid modifying the set while iterating
+    const playerIds = Array.from(from.players);
+
+    for (const socketId of playerIds) {
+      const playerSocket = this.io.sockets.sockets.get(socketId);
+      if (!playerSocket) {
+        console.warn(`Socket not found for id ${socketId}`);
+        continue;
+      }
+
+      const player = from.gameWorld.getPlayerById(socketId);
+      if (!player) {
+        console.warn(`Player not found in gameWorld for id ${socketId}`);
+        continue;
+      }
+
+      this.transferPlayer(from, to, player, playerSocket);
+    }
+
+    console.log(
+      `Migrated ${playerIds.length} players from lobby ${from.id} -> ${to.id}`
+    );
+  }
+
   transferPlayer(from: Lobby, to: Lobby, player: Player, playerSocket: Socket) {
     // remove from current
     from.players.delete(playerSocket.id);
