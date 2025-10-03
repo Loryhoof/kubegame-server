@@ -8,7 +8,6 @@ import { config } from "dotenv";
 import LobbyManager from "./LobbyManager";
 import { serverHz } from "./constants";
 import PhysicsManager from "./PhysicsManager";
-import { attachSocketHandlers } from "./socket/handlers";
 import ServerStore from "./Store/ServerStore";
 
 export type ServerNotification = {

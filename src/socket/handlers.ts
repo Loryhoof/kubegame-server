@@ -290,6 +290,9 @@ export function attachSocketHandlers(
     if (command === "suicide") player.damage(100);
 
     if (command == "race") {
+      if (player.lobby && player.lobby.type == "Minigame")
+        socket.emit("minigame-cancel");
+
       const lobby = lobbyManager.createMinigameLobby("race");
 
       lobbyManager.transferPlayer(player.lobby, lobby, player, socket);

@@ -3,10 +3,6 @@ import Lobby from "./Lobby";
 import Player from "./Player";
 import { serializeNPC, serializePlayer } from "./serialize";
 import NPC from "./NPC";
-import { readFileSync } from "fs";
-import { WorldSettings } from "./Types/worldTypes";
-import { Vector3 } from "./mathUtils";
-import { Quaternion } from "@dimforge/rapier3d-compat";
 
 export type MinigameType = "race" | "deathmatch" | "custom";
 
@@ -45,14 +41,6 @@ export default class LobbyManager {
   init() {
     this.hubLobby = new Lobby(this, "Hub", this.io);
 
-    // minigames.forEach((minigameMeta) => {
-    //   const lobby = new Lobby("Minigame", this.io);
-    //   lobby.setMinigame(minigameMeta);
-
-    //   this.minigameLobbies.push(lobby);
-    // });
-
-    // Attach connection listener ONCE here
     this.io.on("connection", (socket) => this.handleConnection(socket));
 
     this.serverIsReady = true;
@@ -189,11 +177,11 @@ export default class LobbyManager {
     });
 
     // 8. Send chat history for new lobby
-    // playerSocket.emit("init-chat", { messages: to.chat });
+    playerSocket.emit("init-chat", { messages: to.chat });
 
-    console.log(
-      `Player ${playerSocket.id} switched from ${from.id} -> ${to.id}`
-    );
+    // console.log(
+    //   `Player ${playerSocket.id} switched from ${from.id} -> ${to.id}`
+    // );
 
     to.joinLobby(playerSocket);
   }
