@@ -297,6 +297,12 @@ class World {
   //   // this.minigame.start();
   // }
 
+  shotFired(position: Vector3) {
+    this.io.to(this.lobby.id).emit("shot-fired", {
+      position: position,
+    });
+  }
+
   registerHit(
     position: Vector3,
     hitPlayer: string | null = null,
@@ -562,8 +568,12 @@ class World {
   }
 
   getPlayerFromCollider(col: RAPIER.Collider): Player | NPC | null {
+    if (!col) return null;
+
     for (const [key, player] of this.players) {
       const { collider } = player.physicsObject;
+
+      if (!collider) return null;
 
       if (collider.handle == col.handle) {
         return player;
@@ -612,7 +622,7 @@ class World {
   }
 
   addNPC(position: Vector3) {
-    console.log("ADDING NPC");
+    console.log("ADDING NPC", position);
     const npc = new NPC(
       this.lobby,
       this,
@@ -631,7 +641,7 @@ class World {
       position: npc.position,
       quaternion: npc.quaternion,
       color: npc.color,
-      keys: npc.keys,
+      keys: npc.actions,
       isSitting: npc.isSitting,
     };
 

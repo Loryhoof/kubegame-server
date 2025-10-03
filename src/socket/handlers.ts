@@ -298,6 +298,15 @@ export function attachSocketHandlers(
       lobbyManager.transferPlayer(player.lobby, lobby, player, socket);
     }
 
+    if (command == "deathmatch") {
+      if (player.lobby && player.lobby.type == "Minigame")
+        socket.emit("minigame-cancel");
+
+      const lobby = lobbyManager.createMinigameLobby("deathmatch");
+
+      lobbyManager.transferPlayer(player.lobby, lobby, player, socket);
+    }
+
     if (command == "hub") {
       const lobby = lobbyManager.getHub();
       if (!lobby) return;

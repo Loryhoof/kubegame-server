@@ -58,7 +58,10 @@ export function serializeNPC(npc: NPC) {
     position: npc.position,
     quaternion: npc.quaternion,
     color: npc.color,
-    keys: npc.keys,
+    keys: npc.actions,
     isSitting: npc.isSitting,
+    leftHand: npc.leftHand,
+    rightHand: npc.rightHand,
+    viewQuaternion: npc.viewQuaternion,
   };
 }

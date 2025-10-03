@@ -26,10 +26,13 @@ export default class Lobby {
 
   private lobbyManager: LobbyManager;
 
+  public worldSettings: WorldSettings;
+
   constructor(
     lobbyManager: LobbyManager,
     type: LobbyType,
     io: Server,
+    worldSettings: WorldSettings,
     id: string = generateShortUUID()
   ) {
     this.lobbyManager = lobbyManager;
@@ -38,10 +41,12 @@ export default class Lobby {
     this.id = id;
     this.physicsWorld = PhysicsManager.createWorld();
 
-    const worldSettings: WorldSettings =
-      this.type == "Hub"
-        ? loadWorldSettings("./src/WorldFiles/defaultWorldSettings.json")
-        : loadWorldSettings("./src/WorldFiles/raceWorldSettings.json");
+    // const worldSettings: WorldSettings =
+    //   this.type == "Hub" && loadWorldSettings("./src/WorldFiles/defaultWorldSettings.json")
+    //     ? loadWorldSettings("./src/WorldFiles/defaultWorldSettings.json")
+    //     : loadWorldSettings("./src/WorldFiles/raceWorldSettings.json");
+
+    this.worldSettings = worldSettings;
 
     this.gameWorld = new World(this, this.io, worldSettings);
   }

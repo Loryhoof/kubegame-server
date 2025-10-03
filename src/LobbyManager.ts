@@ -3,6 +3,8 @@ import Lobby from "./Lobby";
 import Player from "./Player";
 import { serializeNPC, serializePlayer } from "./serialize";
 import NPC from "./NPC";
+import { loadWorldSettings } from "./fileUtils";
+import { WorldSettings } from "./Types/worldTypes";
 
 export type MinigameType = "race" | "deathmatch" | "custom";
 
@@ -34,12 +36,31 @@ export default class LobbyManager {
   public hubLobby: Lobby | null = null;
   private serverIsReady: boolean = false;
 
+  private worldSettingsTemplates: Record<string, WorldSettings> = {};
+
   constructor(io: Server) {
     this.io = io;
+
+    this.worldSettingsTemplates["hub"] = loadWorldSettings(
+      "./src/WorldFiles/defaultWorldSettings.json"
+    );
+
+    this.worldSettingsTemplates["race"] = loadWorldSettings(
+      "./src/WorldFiles/raceWorldSettings.json"
+    );
+
+    this.worldSettingsTemplates["deathmatch"] = loadWorldSettings(
+      "./src/WorldFiles/deathmatchWorldSettings.json"
+    );
   }
 
   init() {
-    this.hubLobby = new Lobby(this, "Hub", this.io);
+    this.hubLobby = new Lobby(
+      this,
+      "Hub",
+      this.io,
+      this.worldSettingsTemplates["hub"]
+    );
 
     this.io.on("connection", (socket) => this.handleConnection(socket));
 
@@ -62,7 +83,7 @@ export default class LobbyManager {
     const index = this.minigameLobbies.findIndex((item) => item.id == lobby.id);
     this.minigameLobbies.splice(index, 1);
 
-    lobby = new Lobby(this, lobby.type, this.io, lobby.id);
+    lobby = new Lobby(this, lobby.type, this.io, lobby.worldSettings, lobby.id);
   }
 
   getHub() {
@@ -70,7 +91,8 @@ export default class LobbyManager {
   }
 
   createMinigameLobby(type: MinigameType, id?: string): Lobby {
-    const lobby = new Lobby(this, "Minigame", this.io, id);
+    const setting = this.worldSettingsTemplates[type];
+    const lobby = new Lobby(this, "Minigame", this.io, setting);
     // lobby.setMinigame(minigames[0]);
     this.minigameLobbies.push(lobby);
 

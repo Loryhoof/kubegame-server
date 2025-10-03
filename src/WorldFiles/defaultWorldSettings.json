@@ -11,13 +11,6 @@
       "spawnerType": "coin"
     },
     {
-      "type": "spawner",
-      "name": "npc_spawner",
-      "delay": 1000,
-      "maxNumSpawn": 1,
-      "spawnerType": "npc"
-    },
-    {
       "type": "trimesh",
       "name": "ramp",
       "position": { "x": 40, "y": -0.5, "z": 10 },
@@ -47,12 +40,6 @@
       "position": { "x": 0, "y": -0.5, "z": 0 },
       "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
       "scale": { "x": 500, "y": 0.1, "z": 500 }
-    },
-    {
-      "type": "npc",
-      "name": "npc",
-      "position": { "x": 0, "y": 5, "z": 0 },
-      "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 }
     }
   ]
 }
