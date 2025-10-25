@@ -9,11 +9,7 @@
   "spawnPoints": [
     [0, 1, 0],
     [-11, 1, 4],
-    [0, 1, -6],
-    [10, 1, 10],
-    [-14, 1, 14],
-    [-20, 1, 7],
-    [9, 1, 14]
+    [0, 1, -6]
   ],
   "gameObjects": [
     {
@@ -33,7 +29,7 @@
       "type": "spawner",
       "name": "npc_spawner",
       "delay": 1000,
-      "maxNumSpawn": 3,
+      "maxNumSpawn": 1,
       "spawnerType": "npc"
     }
   ]
