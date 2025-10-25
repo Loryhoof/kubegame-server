@@ -18,7 +18,7 @@ import { findPath } from "./Utils/pathfinding";
 
 const REPATH_DISTANCE_THRESHOLD = 3; // how far target can move before recalculating
 const REACTION_MIN = 300;
-const REACTION_MAX = 800;
+const REACTION_MAX = 500;
 
 class NPC {
   public id: string;
