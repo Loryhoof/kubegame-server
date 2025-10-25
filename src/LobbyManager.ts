@@ -5,6 +5,7 @@ import { serializeNPC, serializePlayer } from "./serialize";
 import NPC from "./NPC";
 import { loadWorldSettings } from "./fileUtils";
 import { WorldSettings } from "./Types/worldTypes";
+import ServerStore, { UserRecord } from "./Store/ServerStore";
 
 export type MinigameType = "race" | "deathmatch" | "custom";
 
@@ -22,13 +23,13 @@ export type LobbyDetails = {
   minigame?: MinigameMeta;
 };
 
-const minigames: MinigameMeta[] = [
-  {
-    type: "race",
-    name: "Race to the Death",
-    description: "a good circuit race mode",
-  },
-];
+// const minigames: MinigameMeta[] = [
+//   {
+//     type: "race",
+//     name: "Race to the Death",
+//     description: "a good circuit race mode",
+//   },
+// ];
 
 export default class LobbyManager {
   private io: Server;
@@ -69,6 +70,13 @@ export default class LobbyManager {
 
   private handleConnection(socket: Socket) {
     console.log("Socket connected:", socket.id);
+
+    const userRecord: UserRecord = {
+      id: socket.id,
+      dateJoined: Date.now(),
+    };
+
+    ServerStore.getInstance().addUserRecordEntry(userRecord);
 
     // For now, always join Hub lobby
     if (this.hubLobby) {

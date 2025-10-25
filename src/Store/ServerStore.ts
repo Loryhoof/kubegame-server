@@ -4,11 +4,17 @@ type RaceLeaderboardEntry = {
   time: number;
 };
 
+export type UserRecord = {
+  id: string;
+  dateJoined: number;
+};
+
 export default class ServerStore {
   private static instance: ServerStore;
 
   private serverStartTime: number = -Infinity;
   private raceLeaderboard: RaceLeaderboardEntry[] = [];
+  private userRecords: UserRecord[] = [];
 
   private constructor() {}
 
@@ -41,6 +47,14 @@ export default class ServerStore {
 
     // Sort leaderboard by ascending time (best time first)
     this.raceLeaderboard.sort((a, b) => a.time - b.time);
+  }
+
+  public addUserRecordEntry(data: UserRecord) {
+    this.userRecords.push(data);
+  }
+
+  public getUserRecords() {
+    return this.userRecords;
   }
 
   public getLeaderboard(): RaceLeaderboardEntry[] {

@@ -325,6 +325,7 @@ export function attachSocketHandlers(
           players: lobbyManager.hubLobby?.players.size,
         },
         minigames: lobbyManager.minigameLobbies.length,
+        totalClients: ServerStore.getInstance().getUserRecords().length,
       };
 
       socket.emit("server-info", data);
