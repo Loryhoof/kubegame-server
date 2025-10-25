@@ -5,6 +5,7 @@
   "playerSettings": {
     "controlledObject": true
   },
+  "spawnPoints": [[-100, 1, 130]],
   "gameObjects": [
     {
       "type": "box",

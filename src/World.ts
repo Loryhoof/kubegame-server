@@ -614,9 +614,9 @@ class World {
       this.addVehicle(new Vector3(0, 5, 0), newPlayer);
     }
 
-    // if (this.minigame) {
-    //   this.minigame.addPlayer(newPlayer);
-    // }
+    if (this.minigame) {
+      this.minigame.addPlayer(newPlayer);
+    }
 
     // if (this.minigame) {
     //   this.minigame.addPlayer(newPlayer);
