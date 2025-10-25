@@ -173,7 +173,7 @@ export function attachSocketHandlers(
   });
 
   socket.on("readyForWorld", (data) => {
-    const { inviteId } = data;
+    const inviteId = data?.inviteId;
 
     world.addPlayer(socket.id);
 
