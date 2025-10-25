@@ -2,6 +2,9 @@ import { readFile, readFileSync } from "fs";
 import Quaternion from "./Math/Quaternion";
 import Vector3 from "./Math/Vector3";
 import { WorldSettings } from "./Types/worldTypes";
+import RAPIER from "@dimforge/rapier3d-compat";
+import PhysicsManager from "./PhysicsManager";
+import { NavCell } from "./Utils/pathfinding";
 
 function generateUUID() {
   // RFC4122 version 4 compliant UUID generator (simple)
@@ -328,6 +331,72 @@ function distanceDamageFactor(
   return Math.max(minFactor, 1.0 - t);
 }
 
+function genNavGrid(
+  rapierWorld: RAPIER.World,
+  width: number = 100,
+  depth: number = 100,
+  cellSize: number = 1,
+  origin: Vector3 = new Vector3(-50, 0, -50),
+  capsuleRadius: number = 0.275,
+  capsuleHalfHeight: number = 0.55
+): NavCell[][] {
+  const grid: NavCell[][] = [];
+  if (!rapierWorld) return grid;
+
+  // Create capsule shape once
+  const capsuleShape = new RAPIER.Capsule(capsuleHalfHeight, capsuleRadius);
+
+  for (let x = 0; x < width; x++) {
+    grid[x] = [];
+    for (let z = 0; z < depth; z++) {
+      const wx = origin.x + x * cellSize;
+      const wz = origin.z + z * cellSize;
+
+      // 1) Raycast to find ground
+      const ray = new RAPIER.Ray(
+        new RAPIER.Vector3(wx, 50, wz),
+        new RAPIER.Vector3(0, -1, 0)
+      );
+      const hit = rapierWorld.castRay(ray, 100, true);
+
+      if (!hit) {
+        grid[x][z] = { walkable: false, y: 0 };
+        continue;
+      }
+
+      const groundY = ray.pointAt(hit.timeOfImpact).y;
+
+      // 2) Reject tall tiles (optional logic)
+      if (groundY > 0.5) {
+        grid[x][z] = { walkable: false, y: groundY };
+        continue;
+      }
+
+      // 3) Check capsule collision AT this tile
+      const capsulePos = {
+        x: wx,
+        y: groundY + capsuleHalfHeight + 0.5, // center of capsule
+        z: wz,
+      };
+
+      const collision = rapierWorld.intersectionWithShape(
+        capsulePos,
+        { x: 0, y: 0, z: 0, w: 1 },
+        capsuleShape,
+        undefined
+      );
+
+      // 4) If capsule intersects anything → not walkable
+      const walkable = !collision;
+
+      grid[x][z] = { walkable, y: groundY };
+    }
+  }
+
+  console.log(`✅ NavGrid generated: ${width}x${depth}`);
+  return grid;
+}
+
 export {
   getYRotationQuaternion,
   applyQuaternion,
@@ -350,4 +419,5 @@ export {
   extractYaw,
   computeHitInfo,
   distanceDamageFactor,
+  genNavGrid,
 };

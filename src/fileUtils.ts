@@ -49,6 +49,17 @@ export function loadWorldSettings(path: string): WorldSettings {
     };
   }
 
+  if (data.spawnPoints) {
+    data.spawnPoints = data.spawnPoints.map((point: any) => {
+      if (Array.isArray(point) && point.length === 3) {
+        return new Vector3(point[0], point[1], point[2]);
+      }
+      return point as Vector3;
+    });
+  } else {
+    data.spawnPoints = [];
+  }
+
   // if (data.minigame) {
   //   data.minigame = { type: data.minigame.type }
   // }

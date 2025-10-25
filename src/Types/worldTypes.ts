@@ -60,6 +60,7 @@ export type WorldGameObject =
 export type WorldSettings = {
   gameObjects: WorldGameObject[];
   minigame?: Minigame;
+  spawnPoints: Vector3[];
   playerSettings: PlayerSettings;
 };
 

@@ -1,7 +1,7 @@
 import RAPIER, { QueryFilterFlags } from "@dimforge/rapier3d-compat";
 import Vector3 from "./Math/Vector3";
 import PhysicsManager, { PhysicsObject } from "./PhysicsManager";
-import { Quaternion, randomIntBetween } from "./mathUtils";
+import { Quaternion, randomFromArray, randomIntBetween } from "./mathUtils";
 import Vehicle from "./Vehicle/Vehicle";
 import { IHoldable } from "./interfaces/IHoldable";
 import Weapon from "./Holdable/Weapon";
@@ -114,7 +114,10 @@ class Player {
     this.color = color;
     this.playerSettings = playerSettings;
 
-    this.physicsObject = PhysicsManager.createPlayerCapsule(lobby.physicsWorld);
+    this.physicsObject = PhysicsManager.createPlayerCapsule(
+      lobby.physicsWorld,
+      position
+    );
 
     this.leftHand = { side: "left" };
     this.rightHand = { side: "right" };
@@ -223,9 +226,12 @@ class Player {
     this.isDead = false;
 
     this.physicsObject.rigidBody.wakeUp();
-    this.teleportTo(
-      new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
-    );
+
+    const spawnPosition =
+      randomFromArray(this.lobby.worldSettings.spawnPoints) ??
+      new Vector3(0, 5, 0);
+
+    this.teleportTo(spawnPosition);
   }
 
   setPosition(position: Vector3) {

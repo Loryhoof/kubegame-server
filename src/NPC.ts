@@ -14,6 +14,11 @@ import Player, { Hand } from "./Player";
 import Lobby from "./Lobby";
 import Weapon from "./Holdable/Weapon";
 import { IHoldable } from "./interfaces/IHoldable";
+import { findPath } from "./Utils/pathfinding";
+
+const REPATH_DISTANCE_THRESHOLD = 3; // how far target can move before recalculating
+const REACTION_MIN = 300;
+const REACTION_MAX = 800;
 
 class NPC {
   public id: string;
@@ -73,6 +78,14 @@ class NPC {
 
   private nextStyleSwitch: number = 0;
 
+  private sawTargetAt: number | null = null;
+
+  // Path finding
+  private path: Vector3[] = [];
+  private pathIndex: number = 0;
+  private repathAt: number = 0; // time for next recalculation
+  private lastPathGoal: Vector3 | null = null;
+
   constructor(
     lobby: Lobby,
     world: World,
@@ -98,6 +111,20 @@ class NPC {
     );
 
     this.viewQuaternion = new Quaternion();
+  }
+
+  private requestPathTo(targetPos: Vector3) {
+    const start = { x: this.position.x, z: this.position.z };
+    const goal = { x: targetPos.x, z: targetPos.z };
+    const navGrid = this.world.navCells;
+
+    const newPath = findPath(start, goal, navGrid, new Vector3(-50, 0, -50), 1);
+
+    if (newPath.length > 0) {
+      this.path = newPath;
+      this.pathIndex = 0;
+      this.lastPathGoal = new Vector3(targetPos.x, targetPos.y, targetPos.z); // ✅ remember where we were pathing to
+    }
   }
 
   handleCombat() {
@@ -221,42 +248,39 @@ class NPC {
     if (!this.alive()) return;
 
     const MOVEMENT_SPEED = 4;
-    const FIRE_INTERVAL = randomIntBetween(500, 1000); // ms
+    const FIRE_INTERVAL = randomIntBetween(500, 1000);
+    const MAX_COMBAT_DIST = 30;
+    const REPATH_DISTANCE_THRESHOLD = 3;
 
     const { players } = this.world.getState();
     if (players.size === 0) return;
 
-    // pick / validate target
+    // ----------------------------
+    // ✅ Target selection
+    // ----------------------------
     if (!this.currentTarget || !players.has(this.currentTarget.id)) {
       this.currentTarget = randomFromArray(Array.from(players.values()));
       this.nextShotReadyAt = null;
+      this.sawTargetAt = null;
+      this.path = [];
+      this.pathIndex = 0;
+      this.lastPathGoal = null;
     }
-    if (this.currentTarget == null) return;
+    if (!this.currentTarget) return;
 
-    // vector to target
+    // compute direction
     const toTarget = new Vector3(
       this.currentTarget.position.x - this.position.x,
       this.currentTarget.position.y - this.position.y,
       this.currentTarget.position.z - this.position.z
     );
+    const dirToTarget = toTarget.clone().normalize();
     const distance = toTarget.length();
 
-    // --- Always face target ---
-    const angle = Math.atan2(toTarget.x, toTarget.z) + Math.PI;
-    const lookQuat = new Quaternion().setFromAxisAngle(
-      new Vector3(0, 1, 0),
-      angle
-    );
-    this.setQuaternion(lookQuat);
-    this.viewQuaternion = lookQuat;
-
-    // --- LOS check ---
+    // ----------------------------
+    // ✅ LOS check
+    // ----------------------------
     let hasLOS = false;
-    const dirToTarget = new Vector3(
-      toTarget.x,
-      toTarget.y,
-      toTarget.z
-    ).normalize();
     const hit = PhysicsManager.raycastFull(
       this.lobby.physicsWorld,
       this.position,
@@ -269,58 +293,137 @@ class NPC {
       hasLOS = hitPlayer?.id === this.currentTarget.id;
     }
 
-    // --- Decide behaviour ---
-    if (hasLOS && distance <= 40) {
-      this.actions["aim"] = true;
+    // ============================================================
+    // ✅ NO LOS → PATHFIND
+    // ============================================================
+    if (!hasLOS) {
+      this.actions["aim"] = false;
+      this.actions["shoot"] = false;
+      this.sawTargetAt = null;
 
-      // Decide whether to strafe or stand, but only every 2–4s
-      if (!this.nextStyleSwitch || Date.now() > this.nextStyleSwitch) {
-        (this as any).combatStyle = Math.random() < 0.6 ? "strafe" : "stand";
-        this.nextStyleSwitch = Date.now() + randomIntBetween(2000, 4000);
-        this.nextStrafeSwitch = 0;
+      const targetMovedTooFar =
+        !this.lastPathGoal ||
+        this.lastPathGoal.distanceTo(this.currentTarget.position) >
+          REPATH_DISTANCE_THRESHOLD;
+
+      if (targetMovedTooFar && Date.now() > this.repathAt) {
+        this.requestPathTo(this.currentTarget.position);
+        this.repathAt = Date.now() + randomIntBetween(1000, 2000);
       }
 
-      if ((this as any).combatStyle === "strafe") {
-        if (Date.now() > this.nextStrafeSwitch) {
-          this.strafeDir = Math.random() < 0.5 ? -1 : 1;
-          this.nextStrafeSwitch = Date.now() + randomIntBetween(1000, 2000);
+      if (this.path.length > 0) {
+        const nextPoint = this.path[this.pathIndex];
+        const toNext = new Vector3(
+          nextPoint.x - this.position.x,
+          nextPoint.y - this.position.y,
+          nextPoint.z - this.position.z
+        );
+        const distToNext = toNext.length();
+
+        if (distToNext < 1 && this.pathIndex < this.path.length - 1) {
+          this.pathIndex++;
+          return;
         }
 
-        const forward = new Vector3(
-          dirToTarget.x,
-          dirToTarget.y,
-          dirToTarget.z
-        ).normalize();
-        const right = new Vector3(forward.z, 0, -forward.x).normalize();
+        toNext.normalize();
+        const speed = distance > 6 ? MOVEMENT_SPEED * 2 : MOVEMENT_SPEED;
+        this.velocity.copy(toNext.multiplyScalar(speed));
 
-        const strafe = right.multiplyScalar(
-          this.strafeDir * MOVEMENT_SPEED * 0.7
+        const ang = Math.atan2(toNext.x, toNext.z) + Math.PI;
+        this.setQuaternion(
+          new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), ang)
         );
-        const advance = forward.multiplyScalar(MOVEMENT_SPEED * 0.2);
-        this.velocity.copy(strafe.add(advance));
       } else {
         this.velocity.set(0, 0, 0);
       }
 
-      if (this.nextShotReadyAt === null) {
-        this.nextShotReadyAt = Date.now() + randomIntBetween(200, 600);
-      }
+      return;
+    }
 
-      if (
-        Date.now() >= this.nextShotReadyAt &&
-        Date.now() - this.lastShotTime >= FIRE_INTERVAL
-      ) {
-        this.shoot();
-      }
-    } else {
-      this.nextShotReadyAt = null;
-
-      const dir = new Vector3(toTarget.x, toTarget.y, toTarget.z).normalize();
-      const speedFactor = distance > 10 ? 2 : 1;
-      this.velocity.copy(dir.multiplyScalar(MOVEMENT_SPEED * speedFactor));
-
+    // ============================================================
+    // ✅ HAS LOS BUT TOO FAR → MOVE CLOSER
+    // ============================================================
+    if (distance > MAX_COMBAT_DIST) {
       this.actions["aim"] = false;
       this.actions["shoot"] = false;
+      this.sawTargetAt = null;
+      this.path = [];
+
+      const forward = dirToTarget.clone().normalize();
+      this.velocity.copy(forward.multiplyScalar(MOVEMENT_SPEED));
+
+      const ang = Math.atan2(toTarget.x, toTarget.z) + Math.PI;
+      this.setQuaternion(
+        new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), ang)
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // ✅ COMBAT MODE (LOS + IN RANGE)
+    // ============================================================
+    this.actions["aim"] = true;
+    this.path = [];
+
+    const ang = Math.atan2(toTarget.x, toTarget.z) + Math.PI;
+    const lookQuat = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 1, 0),
+      ang
+    );
+    this.setQuaternion(lookQuat);
+    this.viewQuaternion = lookQuat;
+
+    // ✅ REACTION DELAY (no instant shooting)
+    if (this.sawTargetAt === null) {
+      this.sawTargetAt = Date.now();
+      this.velocity.set(0, 0, 0);
+      return;
+    }
+    const reacted =
+      Date.now() - this.sawTargetAt >=
+      randomIntBetween(REACTION_MIN, REACTION_MAX);
+
+    if (!reacted) {
+      this.velocity.set(0, 0, 0);
+      return;
+    }
+
+    // 🎯 MOVEMENT STYLE
+    if (!this.nextStyleSwitch || Date.now() > this.nextStyleSwitch) {
+      (this as any).combatStyle = Math.random() < 0.6 ? "strafe" : "stand";
+      this.nextStyleSwitch = Date.now() + randomIntBetween(2000, 4000);
+      this.nextStrafeSwitch = 0;
+    }
+
+    if ((this as any).combatStyle === "strafe") {
+      if (Date.now() > this.nextStrafeSwitch) {
+        this.strafeDir = Math.random() < 0.5 ? -1 : 1;
+        this.nextStrafeSwitch = Date.now() + randomIntBetween(1000, 2000);
+      }
+
+      const forward = new Vector3(dirToTarget.x, 0, dirToTarget.z).normalize();
+      const right = new Vector3(forward.z, 0, -forward.x).normalize();
+
+      const strafe = right.multiplyScalar(
+        this.strafeDir * MOVEMENT_SPEED * 0.7
+      );
+      const advance = forward.multiplyScalar(MOVEMENT_SPEED * 0.2);
+
+      this.velocity.copy(strafe.add(advance));
+    } else {
+      this.velocity.set(0, 0, 0);
+    }
+
+    // 🔫 SHOOTING (after reaction delay)
+    if (this.nextShotReadyAt === null) {
+      this.nextShotReadyAt = Date.now() + randomIntBetween(200, 600);
+    }
+    if (
+      Date.now() >= this.nextShotReadyAt &&
+      Date.now() - this.lastShotTime >= FIRE_INTERVAL
+    ) {
+      this.shoot();
     }
   }
 

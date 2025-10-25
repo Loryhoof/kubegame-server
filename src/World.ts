@@ -4,7 +4,9 @@ import Zone from "./interfaces/Zone";
 import {
   distanceToBezier,
   generateUUID,
+  genNavGrid,
   Quaternion,
+  randomFromArray,
   randomHex,
   randomIntBetween,
 } from "./mathUtils";
@@ -29,6 +31,7 @@ import { TerrainData, WorldSettings } from "./Types/worldTypes";
 import TriggerZone from "./Entities/TriggerZone";
 import Race from "./Minigames/Race";
 import { start } from "repl";
+import { NavCell } from "./Utils/pathfinding";
 
 const zoneSpawnLimit: number = 10;
 
@@ -56,8 +59,12 @@ class World {
 
   private minigame: Race | null = null;
 
+  public navCells: NavCell[][] = [];
+
   constructor(lobby: Lobby, io: Server, worldSettings: WorldSettings) {
     this.worldSettings = worldSettings;
+
+    console.log(this.worldSettings, "worldsettings");
 
     this.lobby = lobby;
     this.id = generateUUID();
@@ -134,13 +141,11 @@ class World {
             const intervalId = setInterval(() => {
               if (this.npcs.length >= object.maxNumSpawn) return;
 
-              this.addNPC(
-                new Vector3(
-                  randomIntBetween(-50, 50),
-                  5,
-                  randomIntBetween(-50, 50)
-                )
-              );
+              const spawnPosition =
+                randomFromArray(this.worldSettings.spawnPoints) ??
+                new Vector3(0, 5, 0);
+
+              this.addNPC(spawnPosition);
             }, object.delay);
 
             this.spawnerIntervals.push(intervalId); // ✅ store it
@@ -156,134 +161,21 @@ class World {
       }
     }
 
-    // const physics = PhysicsManager.getInstance();
+    setTimeout(() => {
+      // const ray = new RAPIER.Ray({ x: 0, y: 50, z: 0 }, { x: 0, y: -1, z: 0 });
+      // const hit = this.lobby.physicsWorld.castRay(ray, 200, true);
+      // console.log("Hit?", hit);
 
-    // PhysicsManager.createFixedBox(
-    //   this.lobby.physicsWorld,
-    //   new Vector3(0, -0.5, 0),
-    //   new Vector3(500, 0.1, 500)
-    // );
+      this.navCells = genNavGrid(this.lobby.physicsWorld) as NavCell[][];
 
-    // const ground = new Box(
-    //   500,
-    //   0.1,
-    //   500,
-    //   new Vector3(0, -0.5, 0),
-    //   new Quaternion(),
-    //   "#ff0000"
-    // );
-    // this.entities.push(ground);
-    // car test
+      // this.navCells.forEach((cell) => {
+      //   // this.createHitmarker(cell)
+      //   console.log(cell, "cellss");
+      // });
+      //console.log(this.navCells);
+    }, 100);
 
-    // const npc = new NPC(
-    //   this.lobby,
-    //   this,
-    //   new Vector3(0, 5, 0),
-    //   new Quaternion(),
-    //   randomHex()
-    // );
-
-    // this.npcs.push(npc);
-
-    // const ramp = new Trimesh(
-    //   this.lobby,
-
-    //   new Vector3(40, -0.5, 10),
-    //   new Quaternion(),
-    //   this.objectMap.get("ramp")?.vertices,
-    //   this.objectMap.get("ramp")?.indices,
-    //   "ramp"
-    // );
-
-    // const ramp2 = new Trimesh(
-    //   this.lobby,
-
-    //   new Vector3(80, -0.5, 10),
-    //   new Quaternion(),
-    //   this.objectMap.get("ramp")?.vertices,
-    //   this.objectMap.get("ramp")?.indices,
-    //   "ramp"
-    // );
-
-    // const ramp3 = new Trimesh(
-    //   this.lobby,
-
-    //   new Vector3(40, -0.5, 80),
-    //   new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
-    //   this.objectMap.get("ramp")?.vertices,
-    //   this.objectMap.get("ramp")?.indices,
-    //   "ramp"
-    // );
-
-    // const ramp4 = new Trimesh(
-    //   this.lobby,
-    //   new Vector3(80, -0.5, 80),
-    //   new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
-    //   this.objectMap.get("ramp")?.vertices,
-    //   this.objectMap.get("ramp")?.indices,
-    //   "ramp"
-    // );
-
-    // this.entities.push(ramp, ramp2, ramp3, ramp4);
-
-    // const car = new Vehicle(this.lobby, new Vector3(-20, 10, 10));
-    // this.vehicles.push(car);
-
-    // const car2 = new Vehicle(this.lobby, new Vector3(-20, 5, 20));
-    // this.vehicles.push(car2);
-
-    //this.createTerrain();
-
-    // setInterval(() => {
-    //   if (this.interactables.length >= 10) return;
-
-    //   let pickup = new Pickup(
-    //     new Vector3(randomIntBetween(0, 40), 0, randomIntBetween(0, 40)),
-    //     new Quaternion(0, 0, 0, 1),
-    //     "coin",
-    //     randomIntBetween(5, 15),
-    //     () => {
-    //       this.removeInteractable(pickup);
-    //     }
-    //   );
-
-    //   this.interactables.push(pickup);
-    //   this.io.emit("interactableCreated", pickup);
-    // }, 5000);
-
-    // setInterval(() => {
-    //   if (this.npcs.length > 0) return;
-
-    //   this.addNPC(
-    //     new Vector3(randomIntBetween(-50, 50), 5, randomIntBetween(-50, 50))
-    //   );
-    // }, 1000);
-
-    // this.entities.push(box, box2, box3, box4);
-    //this.interactables.push(interactable, interactable2, interactable3);
-
-    //physics.createBoxCollider({ x: 5, y: 5, z: 5 }, { x: 5, y: 0, z: 5 });
-
-    //this.colliders.push(wall, wall2, wall3, wall4, collider2, phyCollider);
-    //this.zones.push(healthZone, damageZone);
-
-    // setInterval(() => {
-    //   if (this.zones.length >= zoneSpawnLimit) return;
-
-    //   let tz = new TriggerZone(
-    //     2,
-    //     2,
-    //     2,
-    //     { x: randomIntBetween(-20, 20), y: -0.5, z: randomIntBetween(-20, 20) },
-    //     { x: 0, y: 0, z: 0, w: 1 },
-    //     "#FFA500",
-    //     { type: "pickup", itemId: "coins", amount: randomIntBetween(5, 25) },
-    //     () => this.removeZone(tz)
-    //   );
-
-    //   this.zones.push(tz);
-    //   this.io.emit("zoneCreated", tz);
-    // }, 20000);
+    // this.navCells = genNavGrid(this.lobby.physicsWorld) as NavCell[][];
   }
 
   // restartMinigame() {
@@ -325,30 +217,54 @@ class World {
   }
   readObjects() {
     const dirPath = path.join(process.cwd(), "src/Objects");
-    const fileMap = new Map();
+    const fileMap = new Map<
+      string,
+      { vertices: Float32Array; indices: Uint16Array }
+    >();
 
     try {
       const files = readdirSync(dirPath).filter((f) => f.endsWith(".json"));
 
-      files.forEach((file) => {
+      console.log(files);
+
+      for (const file of files) {
         const filePath = path.join(dirPath, file);
 
         try {
           const data = readFileSync(filePath, "utf-8");
           const json = JSON.parse(data);
-
           const key = path.basename(file, ".json");
 
+          // Either a single object or array of them
+          const entries = Array.isArray(json) ? json : [json];
+
+          let mergedVertices: number[] = [];
+          let mergedIndices: number[] = [];
+          let vertexOffset = 0;
+
+          for (const entry of entries) {
+            // Explicitly cast so TypeScript knows they’re numbers
+            const v = Object.values(entry.vertices) as number[];
+            const i = Object.values(entry.indices) as number[];
+
+            mergedVertices.push(...v);
+
+            const offset = vertexOffset / 3;
+            mergedIndices.push(...i.map((idx) => idx + offset));
+
+            vertexOffset += v.length;
+          }
+
           const object = {
-            vertices: new Float32Array(Object.values(json.vertices)),
-            indices: new Uint16Array(Object.values(json.indices)),
+            vertices: new Float32Array(mergedVertices),
+            indices: new Uint16Array(mergedIndices),
           };
 
           fileMap.set(key, object);
         } catch (err: any) {
           console.error(`❌ Failed to read/parse ${file}:`, err.message);
         }
-      });
+      }
     } catch (err: any) {
       console.error("❌ Error reading directory:", err.message);
     }
@@ -356,6 +272,7 @@ class World {
     console.log("✅ Loaded objects:", Array.from(fileMap.keys()));
     return fileMap;
   }
+
   createTerrain() {
     const nrows = 200;
     const ncols = 200;
@@ -622,7 +539,6 @@ class World {
   }
 
   addNPC(position: Vector3) {
-    console.log("ADDING NPC", position);
     const npc = new NPC(
       this.lobby,
       this,
@@ -680,10 +596,13 @@ class World {
   }
 
   addPlayer(networkId: string) {
+    const spawnPosition =
+      randomFromArray(this.worldSettings.spawnPoints) ?? new Vector3(0, 5, 0);
+
     const newPlayer = new Player(
       this.lobby,
       networkId,
-      new Vector3(0, 0, 0),
+      spawnPosition,
       new Quaternion(0, 0, 0, 1),
       randomHex(),
       this.worldSettings.playerSettings
@@ -695,9 +614,9 @@ class World {
       this.addVehicle(new Vector3(0, 5, 0), newPlayer);
     }
 
-    if (this.minigame) {
-      this.minigame.addPlayer(newPlayer);
-    }
+    // if (this.minigame) {
+    //   this.minigame.addPlayer(newPlayer);
+    // }
 
     // if (this.minigame) {
     //   this.minigame.addPlayer(newPlayer);

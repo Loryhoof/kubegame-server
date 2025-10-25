@@ -167,7 +167,6 @@ export function attachSocketHandlers(
   });
 
   socket.on("init-user-settings", ({ nickname }: { nickname?: string }) => {
-    console.log("initing beniting nigward");
     if (nickname) {
       world.getPlayerById(socket.id)?.setNickname(nickname);
     }

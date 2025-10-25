@@ -16,12 +16,14 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "https": "^1.0.0",
+    "pathfinding": "^0.4.18",
     "simplex-noise": "^4.0.3",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.2.0",
+    "@types/pathfinding": "^0.1.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
   }
