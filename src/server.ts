@@ -34,18 +34,15 @@ const allowedOrigins = [
   "https://www.kubegame.com",
 ];
 
+app.use(express.json());
+
+app.options("*", cors()); // <-- MUST be before any CORS restriction
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) {
-        // allow Postman & Google redirect/popup
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -53,12 +50,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-// ✅ VERY IMPORTANT — allow all OPTIONS preflights
-app.options("*", cors());
-
-// app.options("*", cors()); // <-- handles preflight
-app.use(express.json());
 
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
