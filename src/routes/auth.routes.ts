@@ -11,7 +11,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post("/google", async (req: Request, res: Response) => {
   console.log("Requesting google");
   const token = req.body.token;
-  if (!token) res.status(400).json({ error: "No token provided" });
+  if (!token) return res.status(400).json({ error: "No token provided" });
 
   try {
     const ticket = await client.verifyIdToken({
