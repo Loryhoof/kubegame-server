@@ -23,6 +23,8 @@ export function serializePlayer(p: Player): PlayerData {
     isDead: p.isDead,
     killCount: p.killCount,
     lobbyId: p.lobby.id,
+    selectedItemSlot: p.selectedItemSlot,
+    itemSlots: p.itemsSlots,
   };
 }
 

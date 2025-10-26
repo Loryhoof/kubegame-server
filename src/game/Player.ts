@@ -8,6 +8,7 @@ import Weapon from "./Holdable/Weapon";
 import Lobby from "./Lobby";
 import { PlayerSettings } from "./Types/worldTypes";
 import { UserService } from "../services/user.service";
+import { it } from "node:test";
 
 export type InputSeq = {
   seq: number;
@@ -44,6 +45,12 @@ export type PlayerData = {
   isDead: boolean;
   killCount: number;
   lobbyId: string;
+  selectedItemSlot: number;
+  itemSlots: ItemSlot[];
+};
+
+export type ItemSlot = {
+  item: IHoldable | undefined;
 };
 
 class Player {
@@ -103,6 +110,10 @@ class Player {
 
   public userId: string;
 
+  public selectedItemSlot: number = 0;
+
+  public itemsSlots: ItemSlot[];
+
   constructor(
     lobby: Lobby,
     id: string,
@@ -126,29 +137,40 @@ class Player {
       position
     );
 
-    this.leftHand = { side: "left" };
-    this.rightHand = { side: "right" };
+    this.itemsSlots = [
+      { item: undefined },
+      { item: undefined },
+      { item: undefined },
+      { item: undefined },
+    ];
 
     this.setupSettings();
+
+    this.leftHand = { side: "left" };
+    this.rightHand = {
+      side: "right",
+      item: this.itemsSlots[this.selectedItemSlot].item,
+    };
   }
 
   setupSettings() {
-    console.log("setup settings", this.playerSettings);
-    if (this.playerSettings.leftHand) {
-      if (this.playerSettings.leftHand == "pistol") {
-        const pistol = new Weapon("pistol");
+    this.playerSettings.itemSlots.forEach((slot, index) => {
+      console.log(slot, slot.item);
+      if (slot.item) {
+        const name = slot.item;
 
-        this.leftHand.item = pistol;
+        if (name == "pistol")
+          this.itemsSlots[index].item = new Weapon("pistol");
       }
-    }
+    });
+  }
 
-    if (this.playerSettings.rightHand) {
-      if (this.playerSettings.rightHand == "pistol") {
-        const pistol = new Weapon("pistol");
+  selectSlot(slot: number) {
+    this.selectedItemSlot = slot;
 
-        this.rightHand.item = pistol;
-      }
-    }
+    const item = this.itemsSlots[this.selectedItemSlot].item;
+
+    this.rightHand.item = item;
   }
 
   getHandItem(): IHoldable | null {

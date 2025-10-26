@@ -20,7 +20,6 @@ import Lobby from "../game/Lobby";
 import RAPIER from "@dimforge/rapier3d-compat";
 import LobbyManager from "../game/LobbyManager";
 import ServerStore from "../game/Store/ServerStore";
-import { UserService } from "../services/user.service";
 
 type ChatMessage = { id: string; nickname: string; text: string };
 type PlayerInput = {
@@ -418,6 +417,14 @@ export function attachSocketHandlers(
       }
     }
 
+    if (data.actions.slot1 && !player.prevActions.slot1) player.selectSlot(0);
+    else if (data.actions.slot2 && !player.prevActions.slot2)
+      player.selectSlot(1);
+    else if (data.actions.slot3 && !player.prevActions.slot3)
+      player.selectSlot(2);
+    else if (data.actions.slot4 && !player.prevActions.slot4)
+      player.selectSlot(3);
+
     // Spawn car
     if (
       data.actions.spawnVehicle &&
@@ -481,8 +488,11 @@ export function attachSocketHandlers(
     // Shooting + melee
     handleCombat(player, data, world, physicsWorld, socket);
 
+    const hasWeapon = !!player.getHandItem();
+    const wantsMelee = !hasWeapon || !data.actions.aim;
+
     if (
-      !data.actions.aim &&
+      wantsMelee &&
       data.actions.shoot &&
       !player.prevActions.shoot &&
       !player.controlledObject

@@ -4,7 +4,12 @@
   },
   "playerSettings": {
     "controlledObject": false,
-    "rightHand": "pistol"
+    "itemSlots": [
+      { "item": "pistol" },
+      { "item": null },
+      { "item": null },
+      { "item": null }
+    ]
   },
   "spawnPoints": [
     [0, 1, 0],

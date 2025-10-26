@@ -28,8 +28,10 @@ export function loadWorldSettings(path: string): WorldSettings {
   // Convert playerSettings if present in JSON
   if (data.playerSettings) {
     data.playerSettings = {
-      leftHand: data.playerSettings.leftHand ?? null,
-      rightHand: data.playerSettings.rightHand ?? null,
+      itemSlots: data.playerSettings.itemSlots.map((slot) => ({
+        ...slot,
+        item: slot.item ?? undefined,
+      })),
       spawnPosition: data.playerSettings.spawnPosition
         ? new Vector3(
             data.playerSettings.spawnPosition.x,
@@ -42,8 +44,12 @@ export function loadWorldSettings(path: string): WorldSettings {
   } else {
     // Default if missing
     data.playerSettings = {
-      leftHand: null,
-      rightHand: null,
+      itemSlots: [
+        { item: undefined },
+        { item: undefined },
+        { item: undefined },
+        { item: undefined },
+      ],
       spawnPosition: new Vector3(0, 0, 0),
       controlledObject: false,
     };

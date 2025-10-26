@@ -3,7 +3,13 @@
     "type": "race"
   },
   "playerSettings": {
-    "controlledObject": true
+    "controlledObject": true,
+    "itemSlots": [
+      { "item": null },
+      { "item": null },
+      { "item": null },
+      { "item": null }
+    ]
   },
   "spawnPoints": [[-100, 1, 130]],
   "gameObjects": [

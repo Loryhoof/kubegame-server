@@ -1,6 +1,11 @@
 {
   "playerSettings": {
-    "rightHand": "pistol"
+    "itemSlots": [
+      { "item": null },
+      { "item": "pistol" },
+      { "item": null },
+      { "item": null }
+    ]
   },
   "gameObjects": [
     {

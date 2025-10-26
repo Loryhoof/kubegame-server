@@ -1,4 +1,5 @@
 import { Vector3, Quaternion } from "../mathUtils";
+import { ItemSlot } from "../Player";
 import Vehicle from "../Vehicle/Vehicle";
 
 type TrimeshObject = {
@@ -42,11 +43,14 @@ type Minigame = {
   type: "race" | "deathmatch";
 };
 
+type DummySlot = {
+  item: string | undefined;
+};
+
 export type PlayerSettings = {
-  leftHand: string | null;
-  rightHand: string | null;
   spawnPosition: Vector3;
   controlledObject: boolean;
+  itemSlots: DummySlot[];
 };
 
 // The union
