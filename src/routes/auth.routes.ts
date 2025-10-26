@@ -9,6 +9,7 @@ const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 router.post("/google", async (req: Request, res: Response) => {
+  console.log("Requesting google");
   const token = req.body.token;
   if (!token) res.status(400).json({ error: "No token provided" });
 
@@ -17,6 +18,8 @@ router.post("/google", async (req: Request, res: Response) => {
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
+    console.log("Trying verify Id Token google");
 
     const payload = ticket.getPayload();
     if (!payload) return res.status(401).json({ error: "Invalid token" });
@@ -37,6 +40,8 @@ router.post("/google", async (req: Request, res: Response) => {
         },
       });
     }
+
+    console.log("Done  google");
 
     const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: "7d",
