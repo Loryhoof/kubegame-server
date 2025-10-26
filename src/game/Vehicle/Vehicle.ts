@@ -341,7 +341,8 @@ export default class Vehicle {
       if (this.stuntAttempt && !this.failedStunt && !this.isFlipped()) {
         const driver = this.getDriver();
 
-        driver?.give("coin", 100);
+        // driver?.give("coin", 100);
+        driver?.addCoins(100);
 
         this.lobby.gameWorld.createServerNotification({
           recipient: driver?.id ?? "",

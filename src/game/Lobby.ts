@@ -2,7 +2,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { generateShortUUID } from "./mathUtils";
 import World from "./World";
 import { Server, Socket } from "socket.io";
-import { attachSocketHandlers } from "./socket/handlers";
+import { attachSocketHandlers } from "../socket/handlers";
 import PhysicsManager from "./PhysicsManager";
 import { serializeNPC, serializePlayer, serializeVehicle } from "./serialize";
 import { PlayerData } from "./Player";

@@ -43,15 +43,15 @@ export default class LobbyManager {
     this.io = io;
 
     this.worldSettingsTemplates["hub"] = loadWorldSettings(
-      "./src/WorldFiles/defaultWorldSettings.json"
+      "./src/game/WorldFiles/defaultWorldSettings.json"
     );
 
     this.worldSettingsTemplates["race"] = loadWorldSettings(
-      "./src/WorldFiles/raceWorldSettings.json"
+      "./src/game/WorldFiles/raceWorldSettings.json"
     );
 
     this.worldSettingsTemplates["deathmatch"] = loadWorldSettings(
-      "./src/WorldFiles/deathmatchWorldSettings.json"
+      "./src/game/WorldFiles/deathmatchWorldSettings.json"
     );
   }
 
@@ -153,7 +153,7 @@ export default class LobbyManager {
     // 3. Add to new lobby's player set
 
     // 4. Add player to new game world
-    to.gameWorld.addPlayer(playerSocket.id);
+    to.gameWorld.addPlayer(playerSocket.id, playerSocket.data.userId);
 
     // 5. Attach socket handlers for the new lobby
     //    (cleans up old ones if needed inside attachSocketHandlers)

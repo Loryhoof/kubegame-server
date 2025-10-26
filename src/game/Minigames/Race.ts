@@ -1,7 +1,6 @@
 import TriggerZone from "../Entities/TriggerZone";
 import { Quaternion, Vector3 } from "../mathUtils";
 import Player from "../Player";
-import { ServerNotification } from "../server";
 import ServerStore from "../Store/ServerStore";
 import World from "../World";
 

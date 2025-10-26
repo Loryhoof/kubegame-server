@@ -12,7 +12,6 @@ import {
 } from "./mathUtils";
 import Player from "./Player";
 import Collider from "./interfaces/Collider";
-import Box from "./Shapes/Box";
 import PhysicsManager from "./PhysicsManager";
 import Vector3 from "./Math/Vector3";
 import Interactable from "./interfaces/Interactable";
@@ -26,14 +25,11 @@ import { readdirSync, readFileSync } from "fs";
 import Trimesh from "./Shapes/Trimesh";
 import NPC from "./NPC";
 import Lobby from "./Lobby";
-import { ServerNotification } from "./server";
+import { ServerNotification } from "../server";
 import { TerrainData, WorldSettings } from "./Types/worldTypes";
-import TriggerZone from "./Entities/TriggerZone";
 import Race from "./Minigames/Race";
-import { start } from "repl";
 import { NavCell } from "./Utils/pathfinding";
-
-const zoneSpawnLimit: number = 10;
+import { UserService } from "../services/user.service";
 
 type ObjectMapType = { vertices: any; indices: any };
 
@@ -216,7 +212,7 @@ class World {
     this.io.to(this.lobby.id).emit("create-hitmarker", { position: position });
   }
   readObjects() {
-    const dirPath = path.join(process.cwd(), "src/Objects");
+    const dirPath = path.join(process.cwd(), "src/game/Objects");
     const fileMap = new Map<
       string,
       { vertices: Float32Array; indices: Uint16Array }
@@ -595,7 +591,13 @@ class World {
     // }, 1000);
   }
 
-  addPlayer(networkId: string) {
+  async addPlayer(networkId: string, userId: string) {
+    const profile = await UserService.getProfile(userId);
+    const profileCoins = profile?.coins ?? 0;
+    const profileKillcount = profile?.killCount ?? 0;
+    const profileDeathcount = profile?.deathCount ?? 0;
+    const profileNickname = profile?.nickname ?? null;
+
     const spawnPosition =
       randomFromArray(this.worldSettings.spawnPoints) ?? new Vector3(0, 5, 0);
 
@@ -605,8 +607,14 @@ class World {
       spawnPosition,
       new Quaternion(0, 0, 0, 1),
       randomHex(),
-      this.worldSettings.playerSettings
+      this.worldSettings.playerSettings,
+      userId
     );
+
+    newPlayer.coins = profileCoins;
+    newPlayer.killCount = profileKillcount;
+    newPlayer.deathCount = profileDeathcount;
+    newPlayer.nickname = profileNickname;
 
     this.players.set(networkId, newPlayer);
 

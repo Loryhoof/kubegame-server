@@ -12,16 +12,22 @@
   "license": "ISC",
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.18.1",
+    "@prisma/client": "^6.18.0",
     "@types/socket.io": "^3.0.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "google-auth-library": "^10.4.2",
     "https": "^1.0.0",
+    "jsonwebtoken": "^9.0.2",
     "pathfinding": "^0.4.18",
+    "prisma": "^6.18.0",
     "simplex-noise": "^4.0.3",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.2.0",
     "@types/pathfinding": "^0.1.0",
     "ts-node-dev": "^2.0.0",

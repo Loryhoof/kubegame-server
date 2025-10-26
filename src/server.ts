@@ -1,14 +1,22 @@
+import "dotenv/config";
+
 import express from "express";
 import { Server } from "socket.io";
 import http from "http";
 import https from "https";
 
 import { readFileSync } from "fs";
-import { config } from "dotenv";
-import LobbyManager from "./LobbyManager";
-import { serverHz } from "./constants";
-import PhysicsManager from "./PhysicsManager";
-import ServerStore from "./Store/ServerStore";
+import LobbyManager from "./game/LobbyManager";
+import { serverHz } from "./game/constants";
+import PhysicsManager from "./game/PhysicsManager";
+import ServerStore from "./game/Store/ServerStore";
+
+import userRoutes from "./routes/user.routes";
+import authRoutes from "./routes/auth.routes";
+
+import cors from "cors";
+
+import jwt from "jsonwebtoken";
 
 export type ServerNotification = {
   recipient: string;
@@ -16,10 +24,36 @@ export type ServerNotification = {
   content: string;
 };
 
-config();
+const PORT = process.env.PORT || 3000;
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+const allowedOrigins = [
+  "http://localhost:5173", // dev
+  "https://kubegame.com", // prod (frontend)
+  "https://www.kubegame.com", // optional www
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow requests like Postman with no origin
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+// app.options("*", cors()); // <-- handles preflight
+app.use(express.json());
+
+app.use("/users", userRoutes);
+app.use("/auth", authRoutes);
 
 const server =
   process.env.ENVIRONMENT === "PROD"
@@ -38,6 +72,24 @@ const server =
 
 const io = new Server(server, {
   cors: { origin: "*" },
+});
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  try {
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as jwt.JwtPayload & {
+      userId: string;
+    };
+
+    socket.data.userId = payload.userId;
+    next();
+  } catch {
+    next(new Error("Unauthorized"));
+  }
 });
 
 let lastTime = Date.now();

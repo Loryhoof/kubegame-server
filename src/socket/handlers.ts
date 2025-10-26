@@ -7,19 +7,20 @@ import {
   randomIntBetween,
   computeHitInfo,
   distanceDamageFactor,
-} from "../mathUtils";
-import { CAR_COIN_AMOUNT } from "../constants";
-import NPC from "../NPC";
-import World from "../World";
-import PhysicsManager from "../PhysicsManager";
-import { serializeNPC, serializePlayer } from "../serialize";
-import Player from "../Player";
-import Weapon from "../Holdable/Weapon";
+} from "../game/mathUtils";
+import { CAR_COIN_AMOUNT } from "../game/constants";
+import NPC from "../game/NPC";
+import World from "../game/World";
+import PhysicsManager from "../game/PhysicsManager";
+import { serializeNPC, serializePlayer } from "../game/serialize";
+import Player from "../game/Player";
+import Weapon from "../game/Holdable/Weapon";
 import { ServerNotification } from "../server";
-import Lobby from "../Lobby";
+import Lobby from "../game/Lobby";
 import RAPIER from "@dimforge/rapier3d-compat";
-import LobbyManager from "../LobbyManager";
-import ServerStore from "../Store/ServerStore";
+import LobbyManager from "../game/LobbyManager";
+import ServerStore from "../game/Store/ServerStore";
+import { UserService } from "../services/user.service";
 
 type ChatMessage = { id: string; nickname: string; text: string };
 type PlayerInput = {
@@ -51,7 +52,7 @@ function emitAchievement(socket: any, player: Player) {
     content: `${prefix} +${reward} Coins!`,
   };
 
-  player.coins += reward;
+  player.addCoins(reward);
   socket.emit("server-notification", notification);
 }
 
@@ -132,8 +133,8 @@ function handleCombat(
 
           if (hitPlayer.health <= 0) {
             const rewardAmount = randomIntBetween(4, 9);
-            player.give("coin", rewardAmount);
-            player.killCount++;
+            player.addCoins(rewardAmount);
+            player.incrementKillcount();
             emitAchievement(socket, player);
           }
 
@@ -166,16 +167,16 @@ export function attachSocketHandlers(
     socket.emit("syncTimeResponse", { clientSent, serverNow: Date.now() });
   });
 
-  socket.on("init-user-settings", ({ nickname }: { nickname?: string }) => {
-    if (nickname) {
-      world.getPlayerById(socket.id)?.setNickname(nickname);
-    }
-  });
+  // socket.on("init-user-settings", ({ nickname }: { nickname?: string }) => {
+  //   if (nickname) {
+  //     world.getPlayerById(socket.id)?.setNickname(nickname);
+  //   }
+  // });
 
   socket.on("readyForWorld", (data) => {
     const inviteId = data?.inviteId;
 
-    world.addPlayer(socket.id);
+    world.addPlayer(socket.id, socket.data.userId);
 
     if (inviteId) {
       const inviteLobby = lobbyManager.findLobbyById(inviteId);
@@ -285,7 +286,7 @@ export function attachSocketHandlers(
     if (command === "change-nickname" && value.length <= 20) {
       player.setNickname(value);
     }
-    if (command === "give") player.give(value, amount);
+    // if (command === "give") player.give(value, amount);
     if (command === "suicide") player.damage(100);
 
     if (command == "race") {
@@ -329,6 +330,15 @@ export function attachSocketHandlers(
       };
 
       socket.emit("server-info", data);
+    }
+
+    if (command == "stats") {
+      const data = {
+        kills: player.killCount,
+        deaths: player.deathCount,
+      };
+
+      socket.emit("player-stats", data);
     }
   });
 
@@ -415,14 +425,7 @@ export function attachSocketHandlers(
     ) {
       player.lastSpawnedCarTime = Date.now();
       if (!player.controlledObject && !player.isSitting) {
-        if (player.coins < CAR_COIN_AMOUNT) {
-          socket.emit("server-notification", {
-            recipient: socket.id,
-            type: "error",
-            content: `Not enough coins. Car costs ${CAR_COIN_AMOUNT} coins`,
-          });
-        } else {
-          player.coins -= CAR_COIN_AMOUNT;
+        if (player.spendCoins(CAR_COIN_AMOUNT)) {
           socket.emit("server-notification", {
             recipient: socket.id,
             type: "success",
@@ -436,6 +439,12 @@ export function attachSocketHandlers(
             ),
             player
           );
+        } else {
+          socket.emit("server-notification", {
+            recipient: socket.id,
+            type: "error",
+            content: `Not enough coins. Car costs ${CAR_COIN_AMOUNT} coins`,
+          });
         }
       }
     }

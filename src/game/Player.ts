@@ -7,6 +7,7 @@ import { IHoldable } from "./interfaces/IHoldable";
 import Weapon from "./Holdable/Weapon";
 import Lobby from "./Lobby";
 import { PlayerSettings } from "./Types/worldTypes";
+import { UserService } from "../services/user.service";
 
 export type InputSeq = {
   seq: number;
@@ -92,6 +93,7 @@ class Player {
   public viewQuaternion: Quaternion | null = null;
 
   public killCount: number = 0;
+  public deathCount: number = 0;
 
   public isDead: boolean = false;
 
@@ -99,13 +101,16 @@ class Player {
 
   private playerSettings: PlayerSettings;
 
+  public userId: string;
+
   constructor(
     lobby: Lobby,
     id: string,
     position: Vector3,
     quaternion: Quaternion,
     color: string,
-    playerSettings: PlayerSettings
+    playerSettings: PlayerSettings,
+    userId: string
   ) {
     this.lobby = lobby;
     this.id = id;
@@ -113,6 +118,8 @@ class Player {
     this.quaternion = quaternion;
     this.color = color;
     this.playerSettings = playerSettings;
+
+    this.userId = userId;
 
     this.physicsObject = PhysicsManager.createPlayerCapsule(
       lobby.physicsWorld,
@@ -150,6 +157,7 @@ class Player {
 
   setNickname(n: string) {
     this.nickname = n;
+    UserService.updateNickname(this.userId, n);
   }
 
   update(delta: number) {
@@ -218,11 +226,13 @@ class Player {
   die() {
     this.isDead = true;
     this.physicsObject.rigidBody.sleep();
+
+    this.deathCount++;
+    UserService.updateDeathcount(this.userId, this.deathCount);
   }
 
   respawn() {
     this.health = 100;
-    this.killCount = 0;
     this.isDead = false;
 
     this.physicsObject.rigidBody.wakeUp();
@@ -254,8 +264,28 @@ class Player {
     if (this.health > 100) this.health = 100;
   }
 
+  incrementKillcount() {
+    this.killCount++;
+    UserService.updateKillcount(this.userId, this.killCount);
+  }
+
+  addCoins(amount: number) {
+    this.coins += amount;
+    UserService.updateCoins(this.userId, this.coins);
+  }
+
+  spendCoins(amount: number): boolean {
+    if (this.coins < amount) {
+      return false;
+    }
+
+    this.coins -= amount;
+    UserService.updateCoins(this.userId, this.coins);
+    return true;
+  }
+
   give(item: any, amount: number) {
-    if (item === "coin") this.coins += amount;
+    if (item === "coin") this.addCoins(amount);
     if (item === "pistol") this.rightHand.item = new Weapon("pistol");
     if (item === "ammo") this.ammo += amount;
   }

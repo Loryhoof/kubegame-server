@@ -31,3 +31,5 @@ coverage/
 # Optional: local test databases or tmp files
 *.sqlite
 tmp/
+
+/src/generated/prisma
