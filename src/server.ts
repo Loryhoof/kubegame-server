@@ -29,16 +29,18 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:5173", // dev
-  "https://kubegame.com", // prod (frontend)
-  "https://www.kubegame.com", // optional www
+  "http://localhost:5173",
+  "https://kubegame.com",
+  "https://www.kubegame.com",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests like Postman with no origin
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        // ✅ allow Postman / Google redirects / server-to-server
+        return callback(null, true);
+      }
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -47,8 +49,13 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
+
+// ✅ also ensure OPTIONS always returns 200
+app.options("*", cors());
+
 // app.options("*", cors()); // <-- handles preflight
 app.use(express.json());
 
