@@ -34,14 +34,14 @@ const allowedOrigins = [
   "https://www.kubegame.com",
 ];
 
-app.use(express.json());
+// 1. CORS preflight handling FIRST
+app.options("*", cors());
 
-app.options("*", cors()); // <-- MUST be before any CORS restriction
-
+// 2. Main CORS validation
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+      if (!origin || origin === "null") return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -50,6 +50,9 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// 3. Body parser (so Express can read JSON bodies)
+app.use(express.json());
 
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
