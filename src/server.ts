@@ -34,20 +34,15 @@ const allowedOrigins = [
   "https://www.kubegame.com",
 ];
 
-// 1. CORS preflight handling FIRST
-app.options("*", cors());
-
-// 2. Main CORS validation
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || origin === "null") return callback(null, true);
+      if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
