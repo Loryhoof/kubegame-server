@@ -425,6 +425,10 @@ export function attachSocketHandlers(
     else if (data.actions.slot4 && !player.prevActions.slot4)
       player.selectSlot(3);
 
+    if (data.actions.jump && !player.prevActions.jump) {
+      player.jump();
+    }
+
     // Spawn car
     if (
       data.actions.spawnVehicle &&
