@@ -53,7 +53,7 @@ router.post("/google", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
 });
 
