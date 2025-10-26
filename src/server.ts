@@ -38,7 +38,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) {
-        // ✅ allow Postman / Google redirects / server-to-server
+        // allow Postman & Google redirect/popup
         return callback(null, true);
       }
 
@@ -50,10 +50,11 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ also ensure OPTIONS always returns 200
+// ✅ VERY IMPORTANT — allow all OPTIONS preflights
 app.options("*", cors());
 
 // app.options("*", cors()); // <-- handles preflight
