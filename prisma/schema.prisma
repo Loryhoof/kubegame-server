@@ -17,7 +17,7 @@ model User {
   deathCount  Int      @default(0)
   admin       Boolean  @default(false)
   nickname    String?
-  isGuest     Boolean  @default(true)
+  isGuest     Boolean  @default(false)
   deviceHash  String?  @unique
   createdAt   DateTime @default(now())
   lastSeenAt DateTime @default(now()) @updatedAt
