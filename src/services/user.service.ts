@@ -21,3 +21,5 @@ export const UserService = {
     return prisma.user.update({ where: { id: userId }, data: { nickname } });
   },
 };
+
+//
