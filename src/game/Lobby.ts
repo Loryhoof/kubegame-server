@@ -4,8 +4,13 @@ import World from "./World";
 import { Server, Socket } from "socket.io";
 import { attachSocketHandlers } from "../socket/handlers";
 import PhysicsManager from "./PhysicsManager";
-import { serializeNPC, serializePlayer, serializeVehicle } from "./serialize";
-import { PlayerData } from "./Player";
+import {
+  serializeBinaryWorld,
+  serializeNPC,
+  serializePlayer,
+  serializeVehicle,
+} from "./serialize";
+import Player, { PlayerData } from "./Player";
 import NPC from "./NPC";
 import LobbyManager, { LobbyType, MinigameMeta } from "./LobbyManager";
 import { WorldSettings } from "./Types/worldTypes";
@@ -27,6 +32,12 @@ export default class Lobby {
   private lobbyManager: LobbyManager;
 
   public worldSettings: WorldSettings;
+
+  private lastState = {
+    players: new Map<string, any>(),
+    vehicles: new Map<string, any>(),
+    npcs: new Map<string, any>(),
+  };
 
   constructor(
     lobbyManager: LobbyManager,
@@ -75,52 +86,26 @@ export default class Lobby {
     this.gameWorld.cleanup();
   }
 
-  //   update(delta: number) {
-  //     const { vehicles, npcs, players } = this.gameWorld.getState();
+  emitNPCEvent(player: NPC, event: string, payload: any = undefined) {
+    this.io
+      .to(this.id)
+      .emit("npc-event", { event: event, id: player.id, payload });
+  }
 
-  //     const transformedPlayers: Record<string, PlayerData> = {};
-  //     for (const [id, player] of players.entries()) {
-  //       transformedPlayers[id] = serializePlayer(player);
-  //     }
-
-  //     const worldData = {
-  //       vehicles: vehicles.map(serializeVehicle),
-  //       npcs: npcs.map((npc: NPC) => serializeNPC(npc)),
-  //     };
-
-  //     for (const id of this.players) {
-  //       const socket = this.io.sockets.sockets.get(id);
-  //       if (socket) {
-  //         socket.emit("updateData", {
-  //           time: Date.now(),
-  //           world: worldData,
-  //           players: transformedPlayers,
-  //         });
-  //       }
-  //     }
-  //   }
+  emitPlayerEvent(player: Player, event: string, payload: any = undefined) {
+    this.io
+      .to(this.id)
+      .emit("player-event", { event: event, id: player.id, payload });
+  }
 
   update(delta: number) {
     this.gameWorld.update(delta);
+    const { players, vehicles, npcs } = this.gameWorld.getState();
 
-    const { vehicles, npcs, players } = this.gameWorld.getState();
+    if (players.size === 0) return;
 
-    const transformedPlayers: Record<string, PlayerData> = {};
-    for (const [id, player] of players.entries()) {
-      transformedPlayers[id] = serializePlayer(player);
-    }
-
-    const worldData = {
-      vehicles: vehicles.map(serializeVehicle),
-      npcs: npcs.map((npc: NPC) => serializeNPC(npc)),
-    };
-
-    // Emit to everyone in this lobby room at once
-    this.io.to(this.id).emit("updateData", {
-      lobby: this.id,
-      time: Date.now(),
-      world: worldData,
-      players: transformedPlayers,
-    });
+    const buffer = serializeBinaryWorld(Date.now(), players, vehicles, npcs);
+    LobbyManager.totalBytesThisSecond += buffer.byteLength;
+    this.io.to(this.id).emit("updateBinary", buffer);
   }
 }

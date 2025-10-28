@@ -494,10 +494,18 @@ class NPC {
 
   damage(amount: number) {
     this.health -= amount;
+
+    this.lobby.emitNPCEvent(this, "update-health", {
+      value: this.health,
+    });
   }
   heal(amount: number) {
     if (this.health < 100) this.health += amount;
     if (this.health > 100) this.health = 100;
+
+    this.lobby.emitNPCEvent(this, "update-health", {
+      value: this.health,
+    });
   }
 
   isGrounded(): boolean {

@@ -112,7 +112,7 @@ class Player {
 
   public selectedItemSlot: number = 0;
 
-  public itemsSlots: ItemSlot[];
+  public itemSlots: ItemSlot[];
 
   constructor(
     lobby: Lobby,
@@ -137,7 +137,7 @@ class Player {
       position
     );
 
-    this.itemsSlots = [
+    this.itemSlots = [
       { item: undefined },
       { item: undefined },
       { item: undefined },
@@ -149,8 +149,25 @@ class Player {
     this.leftHand = { side: "left" };
     this.rightHand = {
       side: "right",
-      item: this.itemsSlots[this.selectedItemSlot].item,
+      item: this.itemSlots[this.selectedItemSlot].item,
     };
+
+    // this.lobby.emitPlayerEvent(this, "player-init", {
+    //   lobby: this.lobby.id,
+    //   color: this.color,
+    //   userId: this.userId,
+    //   itemSlots: this.itemSlots,
+    //   selectedItemSlot: this.selectedItemSlot,
+    //   coins: this.coins,
+    //   leftHand: this.leftHand,
+    //   rightHand: this.rightHand,
+    //   ammo: this.ammo,
+    //   controlledObject: this.controlledObject ? this.controlledObject.id : null,
+    //   killCount: this.killCount,
+    //   deathCount: this.deathCount,
+    //   isDead: this.isDead,
+    //   health: this.health,
+    // });
   }
 
   setupSettings() {
@@ -159,8 +176,7 @@ class Player {
       if (slot.item) {
         const name = slot.item;
 
-        if (name == "pistol")
-          this.itemsSlots[index].item = new Weapon("pistol");
+        if (name == "pistol") this.itemSlots[index].item = new Weapon("pistol");
       }
     });
   }
@@ -168,9 +184,12 @@ class Player {
   selectSlot(slot: number) {
     this.selectedItemSlot = slot;
 
-    const item = this.itemsSlots[this.selectedItemSlot].item;
-
+    const item = this.itemSlots[this.selectedItemSlot].item;
     this.rightHand.item = item;
+
+    this.lobby.emitPlayerEvent(this, "update-selected-slot", {
+      value: this.selectedItemSlot,
+    });
   }
 
   getHandItem(): IHoldable | null {
@@ -264,6 +283,8 @@ class Player {
       new Vector3(0, 5, 0);
 
     this.teleportTo(spawnPosition);
+
+    this.lobby.emitPlayerEvent(this, "respawn");
   }
 
   setPosition(position: Vector3) {
@@ -279,11 +300,19 @@ class Player {
 
   damage(amount: number) {
     this.health -= amount;
+
+    this.lobby.emitPlayerEvent(this, "update-health", {
+      value: this.health,
+    });
   }
 
   heal(amount: number) {
     if (this.health < 100) this.health += amount;
     if (this.health > 100) this.health = 100;
+
+    this.lobby.emitPlayerEvent(this, "update-health", {
+      value: this.health,
+    });
   }
 
   incrementKillcount() {
@@ -294,6 +323,8 @@ class Player {
   addCoins(amount: number) {
     this.coins += amount;
     UserService.updateCoins(this.userId, this.coins);
+
+    this.lobby.emitPlayerEvent(this, "update-coins", { value: this.coins });
   }
 
   spendCoins(amount: number): boolean {
@@ -303,6 +334,9 @@ class Player {
 
     this.coins -= amount;
     UserService.updateCoins(this.userId, this.coins);
+
+    this.lobby.emitPlayerEvent(this, "update-coins", { value: this.coins });
+
     return true;
   }
 
@@ -322,6 +356,8 @@ class Player {
   enterVehicle(vehicle: Vehicle) {
     vehicle.enterVehicle(this);
     this.controlledObject = vehicle;
+
+    this.lobby.emitPlayerEvent(this, "enter-vehicle", { id: vehicle.id });
   }
 
   exitVehicle() {
@@ -336,6 +372,8 @@ class Player {
     this.teleportTo(
       lastPosition.add(new Vector3(2, 0, 0).applyQuaternion(lastQuaternion))
     );
+
+    this.lobby.emitPlayerEvent(this, "exit-vehicle");
   }
 
   jump() {

@@ -37,6 +37,8 @@ export default class LobbyManager {
   public hubLobby: Lobby | null = null;
   private serverIsReady: boolean = false;
 
+  static totalBytesThisSecond: number = 0;
+
   private worldSettingsTemplates: Record<string, WorldSettings> = {};
 
   constructor(io: Server) {
@@ -66,6 +68,15 @@ export default class LobbyManager {
     this.io.on("connection", (socket) => this.handleConnection(socket));
 
     this.serverIsReady = true;
+
+    setInterval(() => {
+      console.log(
+        `Bandwidth: ${(LobbyManager.totalBytesThisSecond / 1024).toFixed(
+          1
+        )} KB/s`
+      );
+      LobbyManager.totalBytesThisSecond = 0;
+    }, 1000);
   }
 
   private handleConnection(socket: Socket) {

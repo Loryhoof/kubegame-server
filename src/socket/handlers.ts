@@ -78,8 +78,15 @@ function handleCombat(
         const needed = handItem.capacity - handItem.ammo;
         const toLoad = Math.min(needed, player.ammo);
 
-        player.ammo -= toLoad;
-        handItem.reload(toLoad);
+        if (handItem.reload(toLoad)) {
+          player.ammo -= toLoad;
+
+          world.lobby.emitPlayerEvent(player, "reload-weapon", {
+            duration: handItem.reloadDurationMs,
+            ammo: player.ammo,
+            amount: toLoad,
+          });
+        }
       }
     }
   }

@@ -558,6 +558,13 @@ class World {
     };
 
     this.io.to(this.lobby.id).emit("addNPC", data);
+
+    this.lobby.emitNPCEvent(npc, "init", {
+      color: npc.color,
+      health: npc.health,
+      leftHand: npc.leftHand,
+      rightHand: npc.rightHand,
+    });
   }
 
   removeVehicle(vehicle: Vehicle) {
@@ -633,6 +640,25 @@ class World {
     //   // newPlayer.teleportTo(startPosition);
     //   newPlayer.controlledObject?.teleportTo(startPosition);
     // }
+
+    this.lobby.emitPlayerEvent(newPlayer, "player-init", {
+      lobby: this.lobby.id,
+      color: newPlayer.color,
+      userId: newPlayer.userId,
+      itemSlots: newPlayer.itemSlots,
+      selectedItemSlot: newPlayer.selectedItemSlot,
+      coins: newPlayer.coins,
+      leftHand: newPlayer.leftHand,
+      rightHand: newPlayer.rightHand,
+      ammo: newPlayer.ammo,
+      controlledObject: newPlayer.controlledObject
+        ? newPlayer.controlledObject.id
+        : null,
+      killCount: newPlayer.killCount,
+      deathCount: newPlayer.deathCount,
+      isDead: newPlayer.isDead,
+      health: newPlayer.health,
+    });
   }
   removePlayer(networkId: string) {
     const player = this.players.get(networkId);
