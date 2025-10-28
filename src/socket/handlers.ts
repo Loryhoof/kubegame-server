@@ -14,6 +14,7 @@ import World from "../game/World";
 import PhysicsManager from "../game/PhysicsManager";
 import {
   deserializeBinaryPlayerInput,
+  deserializeBinaryVehicleInput,
   serializeNPC,
   serializePlayer,
 } from "../game/serialize";
@@ -359,7 +360,9 @@ export function attachSocketHandlers(
   // ============================
   // Vehicle Input
   // ============================
-  socket.on("vehicleInput", (data: PlayerInput) => {
+  socket.on("vehicleInput", (buffer: Buffer) => {
+    const data = deserializeBinaryVehicleInput(buffer) as any;
+
     if (!players.has(socket.id)) return;
     const { players: playerMap } = world.getState();
     const player = playerMap.get(socket.id);
@@ -369,7 +372,7 @@ export function attachSocketHandlers(
     vehicle.lastProcessedInputSeq = data.seq;
     player.prevActions = { ...player.actions };
     player.actions = data.actions;
-    player.viewQuaternion = new Quaternion(...data.camQuat);
+    player.viewQuaternion = data.camQuat;
 
     handleCombat(player, data, world, physicsWorld, socket);
 

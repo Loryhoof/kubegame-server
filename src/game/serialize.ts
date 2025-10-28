@@ -494,3 +494,52 @@ export function deserializeBinaryPlayerInput(buffer: Buffer) {
     camPos: new Vector3(px, py, pz),
   };
 }
+// serializeHelper.ts
+
+export function deserializeBinaryVehicleInput(buffer: Buffer) {
+  // ✅ Convert Buffer → ArrayBuffer
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  );
+
+  const view = new DataView(arrayBuffer);
+  let offset = 0;
+
+  // --- Sequence ---
+  const seq = view.getUint32(offset);
+  offset += 4;
+
+  // --- Delta time ---
+  const dt = view.getFloat32(offset);
+  offset += 4;
+
+  // --- Key bitmask ---
+  const keyMask = view.getUint16(offset);
+  offset += 2;
+
+  // --- Reconstruct actions from INPUT_BITS ---
+  const actions: Record<InputKey, boolean> = {} as any;
+  (Object.keys(INPUT_BITS) as InputKey[]).forEach((key) => {
+    actions[key] = (keyMask & INPUT_BITS[key]) !== 0;
+  });
+
+  // --- Camera quaternion ---
+  const camQuat = new Quaternion(
+    view.getFloat32(offset),
+    view.getFloat32(offset + 4),
+    view.getFloat32(offset + 8),
+    view.getFloat32(offset + 12)
+  );
+  offset += 16;
+
+  // --- Camera position ---
+  const camPos = new Vector3(
+    view.getFloat32(offset),
+    view.getFloat32(offset + 4),
+    view.getFloat32(offset + 8)
+  );
+  offset += 12;
+
+  return { seq, dt, actions, camQuat, camPos };
+}
