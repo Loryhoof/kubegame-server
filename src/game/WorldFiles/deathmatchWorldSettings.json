@@ -38,7 +38,7 @@
       "type": "spawner",
       "name": "npc_spawner",
       "delay": 1000,
-      "maxNumSpawn": 1,
+      "maxNumSpawn": 3,
       "spawnerType": "npc"
     }
   ]

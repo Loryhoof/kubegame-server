@@ -174,7 +174,7 @@ export default class PhysicsManager {
       .setAdditionalMass(1500);
     let rigidBody = world.createRigidBody(rbDesc);
 
-    let boxColDesc = RAPIER.ColliderDesc.cuboid(1, 0.25, 2);
+    let boxColDesc = RAPIER.ColliderDesc.cuboid(1, 0.25, 2.5);
     let collider = world.createCollider(boxColDesc, rigidBody);
 
     return { rigidBody, collider };
