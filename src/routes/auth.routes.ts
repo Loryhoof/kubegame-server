@@ -1,7 +1,6 @@
 import { Request, Response, Router } from "express";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
-import fetch from "node-fetch"; // make sure to install: npm i node-fetch
 import { prisma } from "../db";
 import { createHash, randomUUID } from "crypto";
 
