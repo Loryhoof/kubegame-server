@@ -12,7 +12,11 @@ import { CAR_COIN_AMOUNT } from "../game/constants";
 import NPC from "../game/NPC";
 import World from "../game/World";
 import PhysicsManager from "../game/PhysicsManager";
-import { serializeNPC, serializePlayer } from "../game/serialize";
+import {
+  deserializeBinaryPlayerInput,
+  serializeNPC,
+  serializePlayer,
+} from "../game/serialize";
 import Player from "../game/Player";
 import Weapon from "../game/Holdable/Weapon";
 import { ServerNotification } from "../server";
@@ -396,7 +400,11 @@ export function attachSocketHandlers(
   // ============================
   // Player Input (on foot)
   // ============================
-  socket.on("playerInput", (data: PlayerInput) => {
+  socket.on("playerInput", (buffer: Buffer) => {
+    const data = deserializeBinaryPlayerInput(buffer) as any;
+
+    LobbyManager.totalBytesThisSecond += buffer.byteLength;
+
     if (!players.has(socket.id)) return;
     const { players: playerMap, vehicles } = world.getState();
     const player = playerMap.get(socket.id);
@@ -406,7 +414,7 @@ export function attachSocketHandlers(
     player.prevActions = { ...player.actions };
     player.actions = data.actions;
     player.wantsToInteract = data.actions.interact;
-    player.viewQuaternion = new Quaternion(...data.camQuat);
+    player.viewQuaternion = data.camQuat;
 
     // Interact: enter/exit vehicle
     if (

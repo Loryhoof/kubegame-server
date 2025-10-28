@@ -1,4 +1,4 @@
-import { Quaternion } from "./mathUtils";
+import { Quaternion, Vector3 } from "./mathUtils";
 import NPC from "./NPC";
 import Player, { PlayerData } from "./Player";
 
@@ -29,6 +29,17 @@ export function encodeKeys(keys: Record<InputKey, boolean>): number {
     if (keys[key]) mask |= INPUT_BITS[key];
   });
   return mask;
+}
+
+export function decodeKeys(mask: number): Record<InputKey, boolean> {
+  const result = {} as Record<InputKey, boolean>;
+
+  // Always populate all keys
+  (Object.keys(INPUT_BITS) as InputKey[]).forEach((key) => {
+    result[key] = (mask & INPUT_BITS[key]) !== 0;
+  });
+
+  return result;
 }
 
 export function serializePlayer(p: Player): any {
@@ -433,5 +444,53 @@ export function serializeNPC(npc: NPC) {
     leftHand: npc.leftHand,
     rightHand: npc.rightHand,
     viewQuaternion: npc.viewQuaternion,
+  };
+}
+
+export function deserializeBinaryPlayerInput(buffer: Buffer) {
+  // Convert Node.js Buffer → proper ArrayBuffer slice for DataView
+  const arr = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  );
+  const view = new DataView(arr);
+  let offset = 0;
+
+  // --- Bitmask ---
+  const keyMask = view.getUint16(offset);
+  offset += 2;
+
+  // --- Sequence ---
+  const seq = view.getUint16(offset);
+  offset += 2;
+
+  // --- Delta time ---
+  const dt = view.getUint8(offset) / 255;
+  offset += 1;
+
+  // --- Camera quaternion ---
+  const qx = view.getFloat32(offset);
+  offset += 4;
+  const qy = view.getFloat32(offset);
+  offset += 4;
+  const qz = view.getFloat32(offset);
+  offset += 4;
+  const qw = view.getFloat32(offset);
+  offset += 4;
+
+  // --- Camera position ---
+  const px = view.getFloat32(offset);
+  offset += 4;
+  const py = view.getFloat32(offset);
+  offset += 4;
+  const pz = view.getFloat32(offset);
+  offset += 4;
+
+  return {
+    seq,
+    dt,
+    actions: decodeKeys(keyMask),
+    camQuat: new Quaternion(qx, qy, qz, qw),
+    camPos: new Vector3(px, py, pz),
   };
 }

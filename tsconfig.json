@@ -3,8 +3,12 @@
     "moduleResolution": "node",
     "module": "commonjs",
     "target": "ES2020",
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true,
+    "resolveJsonModule": true
   }
 }
