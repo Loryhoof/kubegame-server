@@ -2,7 +2,14 @@ import { prisma } from "../db";
 
 export const UserService = {
   async getProfile(userId: string) {
-    return prisma.user.findUnique({ where: { id: userId } });
+    const user = prisma.user.findUnique({ where: { id: userId } });
+
+    prisma.user.update({
+      where: { id: userId },
+      data: { lastSeenAt: new Date() },
+    });
+
+    return user;
   },
 
   async updateCoins(userId: string, coins: number) {

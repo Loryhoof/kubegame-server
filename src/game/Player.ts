@@ -264,6 +264,10 @@ class Player {
     }
   }
 
+  notify(content: string, type: string = "success") {
+    this.lobby.emitNotification(this, type, content);
+  }
+
   die() {
     this.isDead = true;
     this.physicsObject.rigidBody.sleep();

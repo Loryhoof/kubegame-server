@@ -351,6 +351,39 @@ export function attachSocketHandlers(
 
       socket.emit("player-stats", data);
     }
+
+    if (command === "coinflip") {
+      const bet = Number(value);
+      if (!bet || isNaN(bet) || bet <= 0) return;
+      if (!Number.isInteger(bet)) return; // ❌ reject floats
+
+      const balance = player.coins;
+      if (bet > balance) return;
+
+      // spend first
+      player.spendCoins(bet);
+
+      const win = Math.random() < 0.5;
+
+      if (win) {
+        const profit = bet * 2;
+        player.addCoins(profit);
+
+        const notification: ServerNotification = {
+          recipient: socket.id,
+          type: "achievement",
+          content: `You won ${profit} coins!`,
+        };
+        socket.emit("server-notification", notification);
+      } else {
+        const notification: ServerNotification = {
+          recipient: socket.id,
+          type: "error",
+          content: `You lost ${bet} coins.`,
+        };
+        socket.emit("server-notification", notification);
+      }
+    }
   });
 
   socket.on("pingCheck", (startTime) => {

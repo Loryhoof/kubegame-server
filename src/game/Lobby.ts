@@ -86,6 +86,14 @@ export default class Lobby {
     this.gameWorld.cleanup();
   }
 
+  emitNotification(recipient: Player, type: string, content: string) {
+    this.io.to(this.id).emit("server-notification", {
+      recipient: recipient,
+      type,
+      content,
+    });
+  }
+
   emitNPCEvent(player: NPC, event: string, payload: any = undefined) {
     this.io
       .to(this.id)
