@@ -69,14 +69,14 @@ export default class LobbyManager {
 
     this.serverIsReady = true;
 
-    setInterval(() => {
-      console.log(
-        `Bandwidth: ${(LobbyManager.totalBytesThisSecond / 1024).toFixed(
-          1
-        )} KB/s`
-      );
-      LobbyManager.totalBytesThisSecond = 0;
-    }, 1000);
+    // setInterval(() => {
+    //   console.log(
+    //     `Bandwidth: ${(LobbyManager.totalBytesThisSecond / 1024).toFixed(
+    //       1
+    //     )} KB/s`
+    //   );
+    //   LobbyManager.totalBytesThisSecond = 0;
+    // }, 1000);
   }
 
   private handleConnection(socket: Socket) {

@@ -83,6 +83,31 @@ router.post("/google", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/me", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "No auth header" });
+
+  const token = authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: string;
+    };
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    return res.json(user);
+  } catch (err) {
+    console.error("JWT validation error in /me", err);
+    return res.status(401).json({ error: "Invalid token" });
+  }
+});
+
 router.post("/guest", async (req, res) => {
   // Generate or reuse a device identifier
   const deviceId = req.body.deviceId || randomUUID();
